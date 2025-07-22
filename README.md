@@ -1,7 +1,80 @@
 [![DOI](https://zenodo.org/badge/381099159.svg)](https://zenodo.org/doi/10.5281/zenodo.11144871)
 
-# ExCALIBUR tests
+# UKSRC Fork 
 
+This repository is a fork of the [UKRI excalibur-tests](https://github.com/ukri-excalibur/excalibur-tests) repository. 
+As such, most of the work in this repository is solely the work of the contributors to the original repository. This 
+fork serves to implement additional local spack repositories and apps for testing UK Square-Kilometre Array (SKA) 
+Regional Center (UKSRC) hardware with synthetic benchmarks and testing workflows through micro-benchmarks.
+
+In order to use this repository, it is generally advised to follow the 
+[Installation](https://ukri-excalibur.github.io/excalibur-tests/install) and 
+[Setup](https://ukri-excalibur.github.io/excalibur-tests/setup/) instructions.
+
+In brief, here is the recommended steps, details can be found in the previously mentioned links.
+
+## Repo and spack
+<details>
+<summary>Installing</summary>
+
+### For the Repository and ReFrame
+* Clone Repository
+* `cd ukserc-excalibur-tests`
+* `pip install -e ./`
+* `export RFM_CONFIG_FILES=</path/to/framework>/benchmarks/reframe_config.py`
+  * This needs to go into the configuration file (e.g. ~/.bashrc).
+  * This serves to tell ReFrame where the config file is.
+* `export RFM_USE_LOGIN_SHELL="true"`
+  * This needs to go into the configuration file (e.g. ~/.bashrc) .
+  * This serves to let ReFrame know to use the configuration file used for the login node (e.g. ~/.bashrc).
+
+### Spack
+* `git clone -c feature.manyFiles=true --depth=2 https://github.com/spack/spack.git --branch v1.0.0`
+* `source ./spack/share/spack/setup-env.sh`
+  * This needs to go into the configuration file (e.g. ~/.bashrc) 
+* `spack --version`
+  * To verify the spack installation
+* `spack compiler find`
+  * This searches for compilers on the current system so spack can use them
+
+### Spack Environment
+ReFrame needs a spack environment it can reference to, so we create a new spack environment.
+* `spack env create --without-view -d </chosen/path/to/spack/env/>`
+* `spack env activate </chosen/path/to/spack/env/>`
+  * This needs to go into the configuration file (e.g. ~/.bashrc) .
+* `spack config add 'config:install_tree:root:$env/opt/spack'`
+* `export EXCALIBUR_SPACK_ENV=</chosen/path/to/spack/env/>`
+  * This needs to go into the configuration file (e.g. ~/.bashrc) .
+  * This lets the ExCALIBUR tests software know which spack environment to use .
+* `spack -e </chosen/path/to/spack/env/> repo add </path/to/framework>/benchmarks/spack/repo`
+  * This links the environment to a local spack package repository that can be modified.
+</details>
+
+<details>
+<summary>Adding benchmarks</summary>
+
+
+In order to add a benchmark to this testing framework, two things need to be done. 
+
+First, it is necessary to verify the existence of the benchmark in the [spack package repo](https://packages.spack.io/), 
+or create the spack package following the 
+[spack package creation tutorial](https://spack-tutorial.readthedocs.io/en/latest/tutorial_packaging.html). If the 
+package needs to be created, it can be added to the `<repo>/benchmarks/spack/repo/packages` directory which is the local 
+spack repo that the spack environment was set up to have access to, or it can be uploaded to the spack package 
+repository. If needed, an example package can be found in `<repo>/benchmarks/spack/repo/packages/example`. 
+In either situation, installing a package can be done with `spack install --add <name-of-package>`
+
+Second, the test needs to be added to benchmarks directory `<repo>/benchmarks/apps/<test_name>`. This can be done by 
+following the [ReFrame Tutorial](https://reframe-hpc.readthedocs.io/en/stable/tutorial.html) for creating a test. As 
+was the case for spack packages, an example of two tests can be found in `<repo>/examples/` where both sombrero and 
+stream can serve as good starting points for adding a package.
+
+
+</details>
+
+# ExCALIBUR tests
+<details>
+<summary>Original branch ReadMe</summary>
 Performance benchmarks and regression tests for the ExCALIBUR project.
 
 These benchmarks are based on a similar project by
@@ -23,6 +96,9 @@ _**Note**: at the moment the ExCALIBUR benchmarks are a work-in-progress._
 - [Supported systems](https://ukri-excalibur.github.io/excalibur-tests/systems/)
 - [ReFrame tutorial](https://ukri-excalibur.github.io/excalibur-tests/tutorial/reframe_tutorial/)
 - [ARCHER2 tutorial](https://ukri-excalibur.github.io/excalibur-tests/tutorial/archer2_tutorial/)
+
+
+</details>
 
 ## Acknowledgements
 
