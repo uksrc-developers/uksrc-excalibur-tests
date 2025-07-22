@@ -62,15 +62,12 @@ or create the spack package following the
 package needs to be created, it can be added to the `<repo>/benchmarks/spack/repo/packages` directory which is the local 
 spack repo that the spack environment was set up to have access to, or it can be uploaded to the spack package 
 repository. If needed, an example package can be found in `<repo>/benchmarks/spack/repo/packages/example`. 
+In either situation, installing a package can be done with `spack install --add <name-of-package>`
 
 Second, the test needs to be added to benchmarks directory `<repo>/benchmarks/apps/<test_name>`. This can be done by 
 following the [ReFrame Tutorial](https://reframe-hpc.readthedocs.io/en/stable/tutorial.html) for creating a test. As 
 was the case for spack packages, an example of two tests can be found in `<repo>/examples/` where both sombrero and 
 stream can serve as good starting points for adding a package.
-
-
-Following the Spack tutorials allows the creation of the spack package,  The same is the case for adding the ReFrame benchmark, following the 
-tutorial mentioned 
 
 
 </details>
