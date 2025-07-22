@@ -32,15 +32,16 @@ class FftBench(CMakePackage):
 
     version("0.2.1", sha256="0a8f130ccd48c27ae02ae1ea3fce9b3784f9f7524f35bc8a4b6714ad5bf1d88f")
     version("0.2", sha256="e2435efe7b871f332775bce9b08f9ac63afcaffc4057987bb4ef8eee2dfc9ff2")
-    
+
+
     depends_on("c", type="build")
     depends_on("cxx", type="build")
 
     variant("fftw", default=True, description="FFT Benchmark Base")
     depends_on("fftw", type="link")
 
-    variant("mkl", default=False, description="Enable Intel MKL for FFTW.")
-    depends_on("mkl", when="+mkl", type="link")
+#    variant("mkl", default=False, description="Enable Intel MKL for FFTW.")
+#    depends_on("mkl", when="+mkl", type="link")
 
     variant("cuda", default=False, description="Enable cuFFT Library.")
     depends_on("cuda", when="+cuda", type="link")
@@ -53,7 +54,7 @@ class FftBench(CMakePackage):
         args = [
             self.define("CMAKE_EXE_LINKER_FLAGS", "-fopenmp"),
             "-DFFTW3_DIR={0}".format(self.spec['fftw'].prefix),
-#            self.define_from_variant("ONEAPI", "mkl"),
+            self.define_from_variant("ONEAPI", "mkl"),
             self.define_from_variant("CUDA_FFT", "cuda"),
             self.define_from_variant("CUDA_DIR", "cuda"),
             self.define_from_variant("ROC_FFT", "rocfft"),
