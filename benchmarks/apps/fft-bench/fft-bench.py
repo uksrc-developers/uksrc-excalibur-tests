@@ -13,11 +13,11 @@ class FftBenchmarkCpu(SpackTest):
     # partition which has the named feature, `-feature` is a partition which
     # does not have the named feature.  This is a CPU-only benchmark, so we use
     # `-gpu` to exclude GPU partitions.
-    valid_systems = ['*']
+    valid_systems = ['-gpu']
     valid_prog_environs = ['default']
     tasks = parameter([1])  # Used to set `num_tasks` in `__init__`.
     num_tasks_per_node = 1
-    cpus_per_task = 8
+    cpus_per_task = parameter([8])
     sourcesdir = os.path.dirname(__file__)
     time_limit = '10m'
 
@@ -52,7 +52,7 @@ class FftBenchmarkCpu(SpackTest):
         self.num_tasks = self.tasks
         self.num_cpus_per_task = self.cpus_per_task
         # Tags are useful for categorizing tests and quickly selecting those of interest.
-        self.tags.add("fft_bench")
+        self.tags.add("fftw")
         # With `env_vars` you can set environment variables to be used in the
         # job.  For example with `OMP_NUM_THREADS` we set the number of OpenMP
         # threads (not actually used in this specific benchmark).  Note that
@@ -63,11 +63,9 @@ class FftBenchmarkCpu(SpackTest):
     # Function defining a sanity check.  See
     # https://reframe-hpc.readthedocs.io/en/stable/regression_test_api.html
     # for the API of ReFrame tests, including performance ones.
-    @run_before('sanity')
-    def set_sanity_patterns(self):
-        # Check that the string `[FFT_Code][0]` appears in the standard output of
-        # the program.
-        self.sanity_patterns = sn.assert_found(r'Run_Finished', self.stdout)
+    @sanity_function
+    def validate(self):
+        return sn.assert_found(r'Run_Finished', self.stdout)
 
     # A performance benchmark.
     @run_before('performance')
