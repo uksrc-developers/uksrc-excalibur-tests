@@ -57,12 +57,12 @@ class FftBench(CMakePackage):
             "-DFFTW3_DIR={0}".format(self.spec['fftw'].prefix),
             self.define_from_variant("ONEAPI", "mkl")
         ]
-        if int(self.spec.variants["cuda"].value):
+        if "+cuda" in self.spec:
             args.extend([
                 self.define_from_variant("CUDA_FFT", "cuda"),
                 "-DCUDA_DIR={0}".format(self.spec['cuda'].prefix)
             ])
-        if int(self.spec.variants["rocfft"].value):
+        if "+rocfft" in self.spec:
             args.extend([
                 self.define_from_variant("ROC_FFT", "rocfft"),
                 "-DROCM_DIR={}".format(self.spec['rocm'].prefix)
