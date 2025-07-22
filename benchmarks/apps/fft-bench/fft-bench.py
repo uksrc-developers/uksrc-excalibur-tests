@@ -50,7 +50,7 @@ class FftBenchmarkCpu(SpackTest):
     @run_after('setup')
     def setup_variables(self):
         self.num_tasks = self.tasks
-        self.num_cpus_per_task = self.cpus_per_task[0]
+        self.num_cpus_per_task = self.cpus_per_task
         # Tags are useful for categorizing tests and quickly selecting those of interest.
         self.tags.add("fft_bench")
         # With `env_vars` you can set environment variables to be used in the
