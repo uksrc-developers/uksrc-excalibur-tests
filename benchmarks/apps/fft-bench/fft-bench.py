@@ -5,6 +5,8 @@ import reframe.utility.sanity as sn
 from reframe.core.backends import getlauncher
 from benchmarks.modules.utils import SpackTest
 
+number_of_memory_points = 0
+number_of_runs = 0
 
 class FfftBenmchmarkBase(SpackTest):
     # Systems and programming environments where to run this benchmark.
@@ -52,15 +54,15 @@ class FfftBenmchmarkBase(SpackTest):
         return sn.assert_found(r'Run_Finished', self.stdout)
 
     # A performance benchmark.
-    @run_before('performance')
-    def set_perf_patterns(self):
-        self.perf_patterns = {
-            dict(
-                sn.extractall(
-                    r'<Library>,\t\t<Size>,\t\t<Time>,',
-                    self.stdout, ['Library', 'Size', 'Time'], [str, float, float])
-            )
-        }
+    #@run_before('performance')
+    #def set_perf_patterns(self):
+    #    self.perf_patterns = {
+    #        dict(
+    #            sn.extractall(
+    #                r'<Library>,\t\t<Size>,\t\t<Time>,',
+    #                self.stdout, ['Library', 'Size', 'Time'], [str, float, float])
+    #        )
+    #    }
 
 @rfm.simple_test
 class FftBenchmarkCPU(FfftBenmchmarkBase):
@@ -74,7 +76,7 @@ class FftBenchmarkCPU(FfftBenmchmarkBase):
     # -f Run with FFTW3 Library
     # -c Run with CUDA Library
     # -r Run with RocFFT Library
-    executable_opts = ["-s", "500", "-m", "0", "-n", "1", "-f"]
+    executable_opts = ["-s", "500", "-m", number_of_memory_points, "-n", number_of_runs, "-f"]
 
     @run_after('setup')
     def setup_variables(self):
@@ -95,7 +97,7 @@ class FftBenchmarkMKL(FfftBenmchmarkBase):
     # -f Run with FFTW3 Library
     # -c Run with CUDA Library
     # -r Run with RocFFT Library
-    executable_opts = ["-s", "500", "-m", "0", "-n", "1", "-f"]
+    executable_opts = ["-s", "500", "-m", number_of_memory_points, "-n", number_of_runs, "-f"]
 
     @run_after('setup')
     def setup_variables(self):
@@ -116,7 +118,7 @@ class FftBenchmarkCUDA(FfftBenmchmarkBase):
     # -f Run with FFTW3 Library
     # -c Run with CUDA Library
     # -r Run with RocFFT Library
-    executable_opts = ["-s", "500", "-m", "0", "-n", "1", "-f", "-c"]
+    executable_opts = ["-s", "500", "-m", number_of_memory_points, "-n", number_of_runs, "-f", "-c"]
 
     @run_after('setup')
     def setup_variables(self):
@@ -137,7 +139,7 @@ class FftBenchmarkROC(FfftBenmchmarkBase):
     # -f Run with FFTW3 Library
     # -c Run with CUDA Library
     # -r Run with RocFFT Library
-    executable_opts = ["-s", "500", "-m", "0", "-n", "1", "-f", "-r"]
+    executable_opts = ["-s", "500", "-m", number_of_memory_points, "-n", number_of_runs, "-f", "-r"]
 
     @run_after('setup')
     def setup_variables(self):
