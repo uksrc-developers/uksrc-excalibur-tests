@@ -2,7 +2,7 @@ import os
 import sys
 import reframe as rfm
 import reframe.utility.sanity as sn
-
+from reframe.core.backends import getlauncher
 from benchmarks.modules.utils import SpackTest
 
 
