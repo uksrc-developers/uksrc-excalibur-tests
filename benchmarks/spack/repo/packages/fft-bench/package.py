@@ -30,7 +30,7 @@ class FftBench(CMakePackage):
 
     maintainers("Marcus-Keil")
 
-    version("0.2.1", sha256="0a8f130ccd48c27ae02ae1ea3fce9b3784f9f7524f35bc8a4b6714ad5bf1d88f")
+    version("0.2.b", sha256="9293756f0bf18043f92b85472209c9257e89605bbeb4bcc51bebaa2676be2858")
     version("0.2", sha256="e2435efe7b871f332775bce9b08f9ac63afcaffc4057987bb4ef8eee2dfc9ff2")
 
 
