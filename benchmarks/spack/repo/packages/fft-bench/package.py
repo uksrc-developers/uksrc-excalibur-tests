@@ -47,6 +47,7 @@ class FftBench(CMakePackage):
     depends_on("cuda", when="+cuda", type="link")
 
     variant("rocfft", default=False, description="Enable rocFFT Library.")
+    depends_on("rocm", when="+rocfft", type="link")
     depends_on("rocfft", when="+rocfft", type="link")
 
     def cmake_args(self):
@@ -56,8 +57,9 @@ class FftBench(CMakePackage):
             "-DFFTW3_DIR={0}".format(self.spec['fftw'].prefix),
             self.define_from_variant("ONEAPI", "mkl"),
             self.define_from_variant("CUDA_FFT", "cuda"),
-            self.define_from_variant("CUDA_DIR", "cuda"),
+            "-DCUDA_DIR={0}".format(self.spec['cuda'].prefix),
             self.define_from_variant("ROC_FFT", "rocfft"),
+            "-DROCM_DIR={}".format(self.spec['rocm'].prefix),
             self.define_from_variant("ROCM_DIR", "rocfft")
         ]
         
