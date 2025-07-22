@@ -19,14 +19,14 @@ class FftBenchmarkCpu(SpackTest):
     num_tasks_per_node = 1
     cpus_per_task = [8]
     sourcesdir = os.path.dirname(__file__)
-    time_limit = '4h'
+    time_limit = '10m'
 
 
     executable = 'FFT_Bench'
     # Spack specification with default value.  A different value can be set
     # from the command line with `-S spack_spec='...'`:
     # https://reframe-hpc.readthedocs.io/en/stable/manpage.html#cmdoption-S
-    spack_spec = 'fft-bench@0.2 +fft'
+    spack_spec = 'fft-bench@0.2.1 +fftw'
 
     # Arguments to pass to the program above to run the benchmarks.
     # -s float = Starting memory footprint in MB
@@ -35,7 +35,7 @@ class FftBenchmarkCpu(SpackTest):
     # -f Run with FFTW3 Library
     # -c Run with CUDA Library
     # -r Run with RocFFT Library
-    executable_opts = ["-s", "500", "-m", "4", "-n", "10", "-f"]
+    executable_opts = ["-s", "500", "-m", "0", "-n", "1", "-f"]
 
     reference = {
         'myriad': {
@@ -48,7 +48,7 @@ class FftBenchmarkCpu(SpackTest):
     @run_after('setup')
     def setup_variables(self):
         self.num_tasks = self.tasks
-        self.num_cpus_per_task = self.cpus_per_task
+        self.num_cpus_per_task = self.cpus_per_task[0]
         # Tags are useful for categorizing tests and quickly selecting those of interest.
         self.tags.add("fft_bench")
         # With `env_vars` you can set environment variables to be used in the
@@ -74,7 +74,7 @@ class FftBenchmarkCpu(SpackTest):
         # the desired figure of merit.
         self.perf_patterns = {
             dict(
-                sn.extract_all(
+                sn.extractall(
                     r'<Library>,\t\t<Size>,\t\t<Time>,',
                     self.stdout, ['Library', 'Size', 'Time'], [str, float, float])
             )
