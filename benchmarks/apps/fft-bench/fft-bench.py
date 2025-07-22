@@ -17,16 +17,16 @@ class FftBenchmarkCpu(SpackTest):
     valid_prog_environs = ['default']
     tasks = parameter([1])  # Used to set `num_tasks` in `__init__`.
     num_tasks_per_node = 1
-    cpus_per_task = [8]
+    cpus_per_task = 8
     sourcesdir = os.path.dirname(__file__)
-    time_limit = '4h'
+    time_limit = '10m'
 
 
     executable = 'FFT_Bench'
     # Spack specification with default value.  A different value can be set
     # from the command line with `-S spack_spec='...'`:
     # https://reframe-hpc.readthedocs.io/en/stable/manpage.html#cmdoption-S
-    spack_spec = 'fft-bench@0.2 +fft'
+    spack_spec = 'fft-bench@0.2 +fftw'
 
     # Arguments to pass to the program above to run the benchmarks.
     # -s float = Starting memory footprint in MB
