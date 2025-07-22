@@ -126,7 +126,7 @@ class FftBenchmarkCUDA(FfftBenmchmarkBase):
         self.env_vars['OMP_NUM_THREADS'] = f'{self.num_cpus_per_task}'
 
 @rfm.simple_test
-class FftBenchmarkCUDA(FfftBenmchmarkBase):
+class FftBenchmarkROC(FfftBenmchmarkBase):
     valid_systems = ['+gpu']
     spack_spec = 'fft-bench@0.2.b +rocfft'
 
