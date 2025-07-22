@@ -40,8 +40,8 @@ class FftBench(CMakePackage):
     variant("fftw", default=True, description="FFT Benchmark Base")
     depends_on("fftw", type="link")
 
-#    variant("mkl", default=False, description="Enable Intel MKL for FFTW.")
-#    depends_on("mkl", when="+mkl", type="link")
+    variant("mkl", default=False, description="Enable Intel MKL for FFTW.")
+    depends_on("mkl", when="+mkl", type="link")
 
     variant("cuda", default=False, description="Enable cuFFT Library.")
     depends_on("cuda", when="+cuda", type="link")
