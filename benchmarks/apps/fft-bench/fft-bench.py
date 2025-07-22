@@ -30,6 +30,10 @@ class FfftBenmchmarkBase(SpackTest):
         }
     }
 
+    @run_before('run')
+    def replace_launcher(self):
+        self.job.launcher = getlauncher('local')()
+
     @run_after('setup')
     def setup_variables(self):
         self.num_tasks = self.tasks
@@ -81,7 +85,7 @@ class FftBenchmarkCPU(FfftBenmchmarkBase):
 
 @rfm.simple_test
 class FftBenchmarkMKL(FfftBenmchmarkBase):
-    valid_systems = ['*']
+    valid_systems = ['-gpu']
     spack_spec = 'fft-bench@0.2 +mkl'
 
     # Arguments to pass to the program above to run the benchmarks.
