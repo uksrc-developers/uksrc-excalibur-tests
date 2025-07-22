@@ -55,13 +55,18 @@ class FftBench(CMakePackage):
         args = [
             self.define("CMAKE_EXE_LINKER_FLAGS", "-fopenmp"),
             "-DFFTW3_DIR={0}".format(self.spec['fftw'].prefix),
-            self.define_from_variant("ONEAPI", "mkl"),
-            self.define_from_variant("CUDA_FFT", "cuda"),
-            "-DCUDA_DIR={0}".format(self.spec['cuda'].prefix),
-            self.define_from_variant("ROC_FFT", "rocfft"),
-            "-DROCM_DIR={}".format(self.spec['rocm'].prefix),
-            self.define_from_variant("ROCM_DIR", "rocfft")
+            self.define_from_variant("ONEAPI", "mkl")
         ]
+        if int(self.spec.variants["cuda"].value):
+            args.extend([
+                self.define_from_variant("CUDA_FFT", "cuda"),
+                "-DCUDA_DIR={0}".format(self.spec['cuda'].prefix)
+            ])
+        if int(self.spec.variants["rocfft"].value):
+            args.extend([
+                self.define_from_variant("ROC_FFT", "rocfft"),
+                "-DROCM_DIR={}".format(self.spec['rocm'].prefix)
+            ])
         
         return args
 
