@@ -34,6 +34,11 @@ class FftBench(CMakePackage):
             "-DFFTW3_DIR={0}".format(self.spec['fftw'].prefix),
             self.define_from_variant("ONEAPI", "mkl")
         ]
+        if "+mkl" in self.spec:
+            args.extend([
+                self.define_from_variant("ONEAPI", "mkl"),
+                "-DONEAPI_DIR={0}".format(self.spec['mkl'].prefix)
+            ])
         if "+cuda" in self.spec:
             args.extend([
                 self.define_from_variant("CUDA_FFT", "cuda"),

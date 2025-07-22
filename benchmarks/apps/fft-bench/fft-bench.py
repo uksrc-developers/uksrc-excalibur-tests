@@ -3,11 +3,11 @@ import sys
 import reframe as rfm
 import reframe.utility.sanity as sn
 from reframe.core.backends import getlauncher
-from benchmarks.modules.utils import SpackTest
 from reframe.core.builtins import sanity_function, parameter, run_before, run_after
+from benchmarks.modules.utils import SpackTest
 
-number_of_memory_points = '2'
-number_of_runs = '1'
+number_of_memory_points = '4'
+number_of_runs = '10'
 
 class FfftBenmchmarkBase(SpackTest):
     # Systems and programming environments where to run this benchmark.
@@ -21,7 +21,7 @@ class FfftBenmchmarkBase(SpackTest):
     num_tasks_per_node = 1
     cpus_per_task = parameter([16])
     #sourcesdir = os.path.dirname(__file__)
-    time_limit = '1h'
+    time_limit = '2h'
 
     executable = 'FFT_Bench'
 
@@ -87,6 +87,7 @@ class FftBenchmarkCPU(FfftBenmchmarkBase):
         self.num_cpus_per_task = self.cpus_per_task
         self.tags.add("fftw")
         self.env_vars['OMP_NUM_THREADS'] = f'{self.num_cpus_per_task}'
+        self.extra_resources['gpu'] = {'num_gpus_per_node': self.num_gpus_per_node}
 
 @rfm.simple_test
 class FftBenchmarkMKL(FfftBenmchmarkBase):
