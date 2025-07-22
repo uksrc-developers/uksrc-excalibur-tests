@@ -70,7 +70,7 @@ class FfftBenmchmarkBase(SpackTest):
 @rfm.simple_test
 class FftBenchmarkCPU(FfftBenmchmarkBase):
     valid_systems = ['-gpu']
-    spack_spec = 'fft-bench@0.2.b+fftw-cuda-rocfft-mkl'
+    spack_spec = 'fft-bench@0.2.b+fftw'
 
     # Arguments to pass to the program above to run the benchmarks.
     # -s float = Starting memory footprint in MB
@@ -91,7 +91,7 @@ class FftBenchmarkCPU(FfftBenmchmarkBase):
 @rfm.simple_test
 class FftBenchmarkMKL(FfftBenmchmarkBase):
     valid_systems = ['-gpu']
-    spack_spec = 'fft-bench@0.2 +mkl-cuda-rocfft-fftw'
+    spack_spec = 'fft-bench@0.2+mkl'
 
     # Arguments to pass to the program above to run the benchmarks.
     # -s float = Starting memory footprint in MB
@@ -112,7 +112,7 @@ class FftBenchmarkMKL(FfftBenmchmarkBase):
 @rfm.simple_test
 class FftBenchmarkCUDA(FfftBenmchmarkBase):
     valid_systems = ['+gpu +cuda']
-    spack_spec = 'fft-bench@0.2.b +cuda-rocfft'
+    spack_spec = 'fft-bench@0.2.b+cuda'
     num_gpus_per_node = 1
     # Arguments to pass to the program above to run the benchmarks.
     # -s float = Starting memory footprint in MB
@@ -133,7 +133,7 @@ class FftBenchmarkCUDA(FfftBenmchmarkBase):
 @rfm.simple_test
 class FftBenchmarkROCM(FfftBenmchmarkBase):
     valid_systems = ['+gpu +rocm']
-    spack_spec = 'fft-bench@0.2.b +rocfft-cuda'
+    spack_spec = 'fft-bench@0.2.b+rocfft'
     num_gpus_per_node = 1
 
     # Arguments to pass to the program above to run the benchmarks.
