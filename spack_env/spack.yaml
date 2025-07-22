@@ -13,7 +13,3 @@ spack:
       root: $env/opt/spack
   repos:
     excalibur: /home/ucapkei/Documents/uksrc-excalibur-tests/benchmarks/spack/repo
-  packages:
-    all:
-      require:
-        - "target=intel-oneapi-compilers-classic@18.0.3 %intel-oneapi-compilers@2025.2.0"
