@@ -6,8 +6,8 @@ from reframe.core.backends import getlauncher
 from benchmarks.modules.utils import SpackTest
 from reframe.core.builtins import sanity_function, parameter, run_before, run_after
 
-number_of_memory_points = '0'
-number_of_runs = '0'
+number_of_memory_points = '2'
+number_of_runs = '1'
 
 class FfftBenmchmarkBase(SpackTest):
     # Systems and programming environments where to run this benchmark.
