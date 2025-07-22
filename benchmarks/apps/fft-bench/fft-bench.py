@@ -108,9 +108,9 @@ class FftBenchmarkMKL(FfftBenmchmarkBase):
 
 @rfm.simple_test
 class FftBenchmarkCUDA(FfftBenmchmarkBase):
-    valid_systems = ['+cuda']
+    valid_systems = ['+gpu +cuda']
     spack_spec = 'fft-bench@0.2.b +cuda'
-
+    num_gpus_per_node = 1
     # Arguments to pass to the program above to run the benchmarks.
     # -s float = Starting memory footprint in MB
     # -m int = Number of runs to do after starting memory footprint
@@ -128,9 +128,10 @@ class FftBenchmarkCUDA(FfftBenmchmarkBase):
         self.env_vars['OMP_NUM_THREADS'] = f'{self.num_cpus_per_task}'
 
 @rfm.simple_test
-class FftBenchmarkROC(FfftBenmchmarkBase):
-    valid_systems = ['+gpu']
+class FftBenchmarkROCM(FfftBenmchmarkBase):
+    valid_systems = ['+gpu +rocm']
     spack_spec = 'fft-bench@0.2.b +rocfft'
+    num_gpus_per_node = 1
 
     # Arguments to pass to the program above to run the benchmarks.
     # -s float = Starting memory footprint in MB
