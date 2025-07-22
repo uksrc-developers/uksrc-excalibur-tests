@@ -28,7 +28,6 @@ class FftBenchmarkCpu(SpackTest):
     # https://reframe-hpc.readthedocs.io/en/stable/manpage.html#cmdoption-S
 
     spack_spec = 'fft-bench@0.2.1 +fftw'
-    spack_spec = 'fft-bench@0.2 +fftw'
 
     # Arguments to pass to the program above to run the benchmarks.
     # -s float = Starting memory footprint in MB
