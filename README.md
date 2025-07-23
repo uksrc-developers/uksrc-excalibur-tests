@@ -34,18 +34,22 @@ In brief, here is the recommended steps, details can be found in the previously 
   * This needs to go into the configuration file (e.g. ~/.bashrc) 
 * `spack --version`
   * To verify the spack installation
-* `spack compiler find`
-  * This searches for compilers on the current system so spack can use them
 
 ### Spack Environment
 ReFrame needs a spack environment it can reference to, so we create a new spack environment.
 * `spack env create --without-view -d </chosen/path/to/spack/env/>`
 * `spack env activate </chosen/path/to/spack/env/>`
-  * This needs to go into the configuration file (e.g. ~/.bashrc) .
+  * This needs to go into the configuration file (e.g. ~/.bashrc).
 * `spack config add 'config:install_tree:root:$env/opt/spack'`
 * `export EXCALIBUR_SPACK_ENV=</chosen/path/to/spack/env/>`
-  * This needs to go into the configuration file (e.g. ~/.bashrc) .
-  * This lets the ExCALIBUR tests software know which spack environment to use .
+  * This needs to go into the configuration file (e.g. ~/.bashrc).
+  * This lets the ExCALIBUR tests software know which spack environment to use.
+* `spack compiler find`
+  * This searches for compilers on the current system so spack can use them.
+* `spack external find`
+  * This searches for already installed packages, and adds them to the environment.
+  * In cases where modules are loaded, load them prior to using this command.
+  * It may be useful to look at the [documentation for package settings](https://spack.readthedocs.io/en/latest/packages_yaml.html)
 * `spack -e </chosen/path/to/spack/env/> repo add </path/to/framework>/benchmarks/spack/repo`
   * This links the environment to a local spack package repository that can be modified.
 </details>
@@ -60,16 +64,17 @@ First, it is necessary to verify the existence of the benchmark in the [spack pa
 or create the spack package following the 
 [spack package creation tutorial](https://spack-tutorial.readthedocs.io/en/latest/tutorial_packaging.html). If the 
 package needs to be created, it can be added to the `<repo>/benchmarks/spack/repo/packages` directory which is the local 
-spack repo that the spack environment was set up to have access to, or it can be uploaded to the spack package 
+spack repo that the spack environment should be set up to have access to, or it can be uploaded to the spack package 
 repository. If needed, an example package can be found in `<repo>/benchmarks/spack/repo/packages/example`. 
-In either situation, installing a package can be done with `spack install --add <name-of-package>`
+In either situation, installing a package can be done with `spack install --add <name-of-package>`. 
 
 Second, the test needs to be added to benchmarks directory `<repo>/benchmarks/apps/<test_name>`. This can be done by 
 following the [ReFrame Tutorial](https://reframe-hpc.readthedocs.io/en/stable/tutorial.html) for creating a test. As 
 was the case for spack packages, an example of two tests can be found in `<repo>/examples/` where both sombrero and 
 stream can serve as good starting points for adding a package.
 
-
+For additional reference, the fft-bench package was created for this project following the above mentioned tutorials
+and example files.
 </details>
 
 # ExCALIBUR tests

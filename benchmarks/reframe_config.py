@@ -435,6 +435,115 @@ site_configuration = {
                         'num_sockets': 2,
                         'num_cpus_per_socket': 64,
                     },
+                },
+                {
+                    'name': 'cosma8-dine2-node',
+                    'descr': 'requires project code do015 in order to access: gc[001-008] with 0-8x NVIDIA A30 GPUs',
+                    'scheduler': 'slurm',
+                    'launcher': 'mpiexec',
+                    'access': ['--partition=dine2', '-A do015'],
+                    'features': ['gpu', 'cuda'],
+                    'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
+                    'sched_options': {
+                        'use_nodes_option': True,
+                    },
+                    'max_jobs': 32,
+                    'processor': {
+                        'num_cpus': 64,
+                        'num_cpus_per_core': 1,
+                        'num_sockets': 2,
+                        'num_cpus_per_socket': 32,
+                    },
+                    'resources': [
+                        {
+                            'name': 'gpu',
+                            'options': ['--gres=gpu:{num_gpus_per_node}']
+                        },
+                    ],
+                },
+                {
+                    'name': 'cosma8-shm-node',
+                    'descr': 'requires project code do016 in order to access: mad04 & mad05 with 0-3x NVIDIA A100 GPUs (4TB RAM)',
+                    'scheduler': 'slurm',
+                    'launcher': 'mpiexec',
+                    'access': ['--partition=cosma8-shm', '-A do016'],
+                    'features': ['gpu', 'cuda'],
+                    'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
+                    'sched_options': {
+                        'use_nodes_option': True,
+                    },
+                    'max_jobs': 64,
+                    'processor': {
+                        'num_cpus': 128,
+                        'num_cpus_per_core': 1,
+                        'num_sockets': 2,
+                        'num_cpus_per_socket': 64,
+                    },
+                    'resources': [
+                        {
+                            'name': 'gpu',
+                            'options': ['--gres=gpu:{num_gpus_per_node}']
+                        },
+                    ],
+                },
+                #{
+                #    'name': 'cosma8-gracehopper-node',
+                #    'descr': 'requires project code do016 in order to access: gn003 with NVIDIA Grace-Hopper (ARM) system',
+                #    'scheduler': 'slurm',
+                #    'launcher': 'mpiexec',
+                #    'access': ['--partition=gracehopper', '-A do016'],
+                #    'features': ['gpu', 'cuda'],
+                #    'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
+                #},
+                {
+                    'name': 'cosma8-shm2-node',
+                    'descr': 'requires project code do018 in order to access: ga004 with 1x AMD MI100 GPU, ga005 and ga006 with 2x AMD MI200 GPUs',
+                    'scheduler': 'slurm',
+                    'launcher': 'mpiexec',
+                    'features': ['gpu', 'rocm'],
+                    'access': ['--partition=cosma8-shm2', '-A do018'],
+                    'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
+                    'sched_options': {
+                        'use_nodes_option': True,
+                    },
+                    'max_jobs': 64,
+                    'processor': {
+                        'num_cpus': 128,
+                        'num_cpus_per_core': 1,
+                        'num_sockets': 2,
+                        'num_cpus_per_socket': 64,
+                    },
+                    'resources': [
+                        {
+                            'name': 'gpu',
+                            'options': ['--gres=gpu:{num_gpus_per_node}']
+                        },
+                    ],
+                },
+                {
+                    'name': 'cosma8-mi300x-node',
+                    'descr': 'requires project code do018 in order to access: ga007 8x AMD MI300 GPUs',
+                    'scheduler': 'slurm',
+                    'launcher': 'mpiexec',
+                    'access': ['--partition=mi300x', '-A do018'],
+                    'features': ['gpu', 'rocm'],
+                    'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
+                    'sched_options': {
+                        'use_nodes_option': True,
+                    },
+                    'max_jobs': 64,
+                    'processor': {
+                        'num_cpus': 128,
+                        'num_cpus_per_core': 1,
+                        'num_sockets': 2,
+                        'num_cpus_per_socket': 64,
+                    },
+                    'resources': [
+                        {
+                            'name': 'gpu',
+                            'options': ['--gres=gpu:{num_gpus_per_node}']
+                        },
+                    ],
                 }
             ]
         },  # end cosma8
