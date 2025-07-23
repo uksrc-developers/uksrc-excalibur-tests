@@ -134,7 +134,7 @@ class FftBenchmarkCUDA(FfftBenmchmarkBase):
 @rfm.simple_test
 class FftBenchmarkROCM(FfftBenmchmarkBase):
     valid_systems = ['+gpu +rocm']
-    spack_spec = 'fft-bench@0.2.b+rocfft'
+    spack_spec = 'fft-bench@0.2.b+rocm'
     num_gpus_per_node = 1
 
     # Arguments to pass to the program above to run the benchmarks.
@@ -150,6 +150,6 @@ class FftBenchmarkROCM(FfftBenmchmarkBase):
     def setup_variables(self):
         self.num_tasks = self.tasks
         self.num_cpus_per_task = self.cpus_per_task
-        self.tags.add("fftw+rocfft")
+        self.tags.add("fftw+rocm")
         self.env_vars['OMP_NUM_THREADS'] = f'{self.num_cpus_per_task}'
         self.extra_resources['gpu'] = {'num_gpus_per_node': self.num_gpus_per_node}

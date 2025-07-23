@@ -423,7 +423,7 @@ site_configuration = {
                     'descr': 'Compute nodes',
                     'scheduler': 'slurm',
                     'launcher': 'mpiexec',
-                    'access': ['--partition=cosma8', '-A durham'],
+                    'access': ['--partition=cosma8', '--account=durham'],
                     'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
                     'sched_options': {
                         'use_nodes_option': True,
@@ -441,7 +441,7 @@ site_configuration = {
                     'descr': 'Compute nodes',
                     'scheduler': 'slurm',
                     'launcher': 'mpiexec',
-                    'access': ['--partition=cosma8-ska', '-A durham'],
+                    'access': ['--partition=cosma8-ska', '--account=durham'],
                     'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
                     'sched_options': {
                         'use_nodes_option': True,
@@ -459,7 +459,7 @@ site_configuration = {
                     'descr': 'Compute nodes',
                     'scheduler': 'slurm',
                     'launcher': 'mpiexec',
-                    'access': ['--partition=cosma8-ska2', '-A durham'],
+                    'access': ['--partition=cosma8-ska2', '--account=durham'],
                     'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
                     'sched_options': {
                         'use_nodes_option': True,
@@ -477,7 +477,7 @@ site_configuration = {
                     'descr': 'requires project code do015 in order to access: gc[001-008] with 0-8x NVIDIA A30 GPUs',
                     'scheduler': 'slurm',
                     'launcher': 'mpiexec',
-                    'access': ['--partition=dine2', '-A do015'],
+                    'access': ['--partition=dine2', '--account=do015'],
                     'features': ['gpu', 'cuda'],
                     'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
                     'sched_options': {
@@ -502,7 +502,7 @@ site_configuration = {
                     'descr': 'requires project code do016 in order to access: mad04 & mad05 with 0-3x NVIDIA A100 GPUs (4TB RAM)',
                     'scheduler': 'slurm',
                     'launcher': 'mpiexec',
-                    'access': ['--partition=cosma8-shm', '-A do016'],
+                    'access': ['--partition=cosma8-shm', '--account=do016'],
                     'features': ['gpu', 'cuda'],
                     'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
                     'sched_options': {
@@ -528,7 +528,7 @@ site_configuration = {
                     'scheduler': 'slurm',
                     'launcher': 'mpiexec',
                     'features': ['gpu', 'rocm'],
-                    'access': ['--partition=cosma8-shm2', '-A do018'],
+                    'access': ['--partition=cosma8-shm2', '--account=do018'],
                     'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
                     'sched_options': {
                         'use_nodes_option': True,
@@ -552,7 +552,7 @@ site_configuration = {
                     'descr': 'requires project code do018 in order to access: ga007 8x AMD MI300 GPUs',
                     'scheduler': 'slurm',
                     'launcher': 'mpiexec',
-                    'access': ['--partition=mi300x', '-A do018'],
+                    'access': ['--partition=mi300x', '--account=do018'],
                     'features': ['gpu', 'rocm'],
                     'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
                     'sched_options': {
@@ -577,7 +577,7 @@ site_configuration = {
                 #    'descr': 'requires project code do016 in order to access: gn003 with NVIDIA Grace-Hopper (ARM) system',
                 #    'scheduler': 'slurm',
                 #    'launcher': 'mpiexec',
-                #    'access': ['--partition=gracehopper', '-A do016'],
+                #    'access': ['--partition=gracehopper', '--account=do016'],
                 #    'features': ['gpu', 'cuda'],
                 #    'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
                 #}

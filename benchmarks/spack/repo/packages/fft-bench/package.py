@@ -23,9 +23,8 @@ class FftBench(CMakePackage):
     variant("cuda", default=False, description="Enable cuFFT Library.")
     depends_on("cuda", when="+cuda", type="link")
 
-    variant("rocfft", default=False, description="Enable rocFFT Library.")
-    depends_on("rocm", when="+rocfft", type="link")
-    depends_on("rocfft", when="+rocfft", type="link")
+    variant("rocm", default=False, description="Enable rocFFT Library.")
+    depends_on("rocm", when="+rocm", type="link")
 
     def cmake_args(self):
         print(self.spec["fftw"].prefix)
@@ -44,9 +43,9 @@ class FftBench(CMakePackage):
                 self.define_from_variant("CUDA_FFT", "cuda"),
                 "-DCUDA_DIR={0}".format(self.spec['cuda'].prefix)
             ])
-        if "+rocfft" in self.spec:
+        if "+rocm" in self.spec:
             args.extend([
-                self.define_from_variant("ROC_FFT", "rocfft"),
+                self.define_from_variant("ROC_FFT", "rocm"),
                 "-DROCM_DIR={}".format(self.spec['rocm'].prefix)
             ])
         
