@@ -423,7 +423,7 @@ site_configuration = {
                     'descr': 'Compute nodes',
                     'scheduler': 'slurm',
                     'launcher': 'mpiexec',
-                    'access': ['--partition=cosma8'],
+                    'access': ['--partition=cosma8', '-A durham'],
                     'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
                     'sched_options': {
                         'use_nodes_option': True,
@@ -437,7 +437,43 @@ site_configuration = {
                     },
                 },
                 {
-                    'name': 'cosma8-dine2-node',
+                    'name': 'ska-node',
+                    'descr': 'Compute nodes',
+                    'scheduler': 'slurm',
+                    'launcher': 'mpiexec',
+                    'access': ['--partition=cosma8-ska', '-A durham'],
+                    'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
+                    'sched_options': {
+                        'use_nodes_option': True,
+                    },
+                    'max_jobs': 64,
+                    'processor': {
+                        'num_cpus': 128,
+                        'num_cpus_per_core': 1,
+                        'num_sockets': 2,
+                        'num_cpus_per_socket': 64,
+                    },
+                },
+                {
+                    'name': 'ska2-node',
+                    'descr': 'Compute nodes',
+                    'scheduler': 'slurm',
+                    'launcher': 'mpiexec',
+                    'access': ['--partition=cosma8-ska2', '-A durham'],
+                    'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
+                    'sched_options': {
+                        'use_nodes_option': True,
+                    },
+                    'max_jobs': 64,
+                    'processor': {
+                        'num_cpus': 128,
+                        'num_cpus_per_core': 1,
+                        'num_sockets': 2,
+                        'num_cpus_per_socket': 64,
+                    },
+                },
+                {
+                    'name': 'dine2-node',
                     'descr': 'requires project code do015 in order to access: gc[001-008] with 0-8x NVIDIA A30 GPUs',
                     'scheduler': 'slurm',
                     'launcher': 'mpiexec',
@@ -462,7 +498,7 @@ site_configuration = {
                     ],
                 },
                 {
-                    'name': 'cosma8-shm-node',
+                    'name': 'shm-node',
                     'descr': 'requires project code do016 in order to access: mad04 & mad05 with 0-3x NVIDIA A100 GPUs (4TB RAM)',
                     'scheduler': 'slurm',
                     'launcher': 'mpiexec',
@@ -496,7 +532,7 @@ site_configuration = {
                 #    'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
                 #},
                 {
-                    'name': 'cosma8-shm2-node',
+                    'name': 'shm2-node',
                     'descr': 'requires project code do018 in order to access: ga004 with 1x AMD MI100 GPU, ga005 and ga006 with 2x AMD MI200 GPUs',
                     'scheduler': 'slurm',
                     'launcher': 'mpiexec',
@@ -521,7 +557,7 @@ site_configuration = {
                     ],
                 },
                 {
-                    'name': 'cosma8-mi300x-node',
+                    'name': 'mi300x-node',
                     'descr': 'requires project code do018 in order to access: ga007 8x AMD MI300 GPUs',
                     'scheduler': 'slurm',
                     'launcher': 'mpiexec',
