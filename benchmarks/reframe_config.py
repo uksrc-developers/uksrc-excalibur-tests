@@ -493,7 +493,7 @@ site_configuration = {
                     'resources': [
                         {
                             'name': 'gpu',
-                            'options': ['--gpus-per-node={num_gpus_per_node}', '--constraint=gpu']
+                            'options': ['--gres=gpu:{num_gpus_per_node}', '--constraint=gpu']
                         },
                     ],
                 },
@@ -518,7 +518,7 @@ site_configuration = {
                     'resources': [
                         {
                             'name': 'gpu',
-                            'options': ['--gpus-per-node={num_gpus_per_node}', '--constraint=gpu']
+                            'options': ['--gres=gpu:{num_gpus_per_node}', '--constraint=gpu']
                         },
                     ],
                 },
@@ -543,7 +543,7 @@ site_configuration = {
                     'resources': [
                         {
                             'name': 'gpu',
-                            'options': ['--gpus-per-node={num_gpus_per_node}', '--constraint=gpu']
+                            'options': ['--gres=gpu:{num_gpus_per_node}', '--constraint=gpu']
                         },
                     ],
                 },
@@ -568,7 +568,7 @@ site_configuration = {
                     'resources': [
                         {
                             'name': 'gpu',
-                            'options': ['--gpus-per-node={num_gpus_per_node}', '--constraint=gpu']
+                            'options': ['--gres=gpu:{num_gpus_per_node}', '--constraint=gpu']
                         },
                     ],
                 },
