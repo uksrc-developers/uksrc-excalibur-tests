@@ -493,7 +493,7 @@ site_configuration = {
                     'resources': [
                         {
                             'name': 'gpu',
-                            'options': ['--gpus-per-node={num_gpus_per_node}']
+                            'options': ['--gpus-per-node={num_gpus_per_node}', '--constraint=gpu']
                         },
                     ],
                 },
@@ -518,19 +518,10 @@ site_configuration = {
                     'resources': [
                         {
                             'name': 'gpu',
-                            'options': ['--gpus-per-node={num_gpus_per_node}']
+                            'options': ['--gpus-per-node={num_gpus_per_node}', '--constraint=gpu']
                         },
                     ],
                 },
-                #{
-                #    'name': 'cosma8-gracehopper-node',
-                #    'descr': 'requires project code do016 in order to access: gn003 with NVIDIA Grace-Hopper (ARM) system',
-                #    'scheduler': 'slurm',
-                #    'launcher': 'mpiexec',
-                #    'access': ['--partition=gracehopper', '-A do016'],
-                #    'features': ['gpu', 'cuda'],
-                #    'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
-                #},
                 {
                     'name': 'shm2-node',
                     'descr': 'requires project code do018 in order to access: ga004 with 1x AMD MI100 GPU, ga005 and ga006 with 2x AMD MI200 GPUs',
@@ -552,7 +543,7 @@ site_configuration = {
                     'resources': [
                         {
                             'name': 'gpu',
-                            'options': ['--gpus-per-node={num_gpus_per_node}']
+                            'options': ['--gpus-per-node={num_gpus_per_node}', '--constraint=gpu']
                         },
                     ],
                 },
@@ -577,10 +568,19 @@ site_configuration = {
                     'resources': [
                         {
                             'name': 'gpu',
-                            'options': ['--gpus-per-node={num_gpus_per_node}']
+                            'options': ['--gpus-per-node={num_gpus_per_node}', '--constraint=gpu']
                         },
                     ],
-                }
+                },
+                #{
+                #    'name': 'cosma8-gracehopper-node',
+                #    'descr': 'requires project code do016 in order to access: gn003 with NVIDIA Grace-Hopper (ARM) system',
+                #    'scheduler': 'slurm',
+                #    'launcher': 'mpiexec',
+                #    'access': ['--partition=gracehopper', '-A do016'],
+                #    'features': ['gpu', 'cuda'],
+                #    'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
+                #}
             ]
         },  # end cosma8
         {
@@ -625,7 +625,7 @@ site_configuration = {
                     'resources': [
                         {
                             'name': 'gpu',
-                            'options': ['--gres=gpu:{num_gpus_per_node}']
+                            'options': ['--gres=gpu:{num_gpus_per_node}', '--constraint=gpu']
                         },
                     ],
                 },
