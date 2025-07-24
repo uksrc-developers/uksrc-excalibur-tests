@@ -435,7 +435,7 @@ site_configuration = {
                         'num_sockets': 2,
                         'num_cpus_per_socket': 64,
                     },
-                },
+                }, # Basic Compute node
                 {
                     'name': 'ska-node',
                     'descr': 'Compute nodes',
@@ -453,7 +453,7 @@ site_configuration = {
                         'num_sockets': 2,
                         'num_cpus_per_socket': 64,
                     },
-                },
+                }, # SKA node
                 {
                     'name': 'ska2-node',
                     'descr': 'Compute nodes',
@@ -471,13 +471,13 @@ site_configuration = {
                         'num_sockets': 2,
                         'num_cpus_per_socket': 64,
                     },
-                },
+                }, # SKA2 nodes
                 {
                     'name': 'dine2-node',
                     'descr': 'requires project code do015 in order to access: gc[001-008] with 0-8x NVIDIA A30 GPUs',
                     'scheduler': 'slurm',
                     'launcher': 'mpiexec',
-                    'access': ['--partition=dine2', '--account=do015'],
+                    'access': ['--partition=dine2', '--account=durham'],
                     'features': ['gpu', 'cuda'],
                     'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
                     'sched_options': {
@@ -493,10 +493,10 @@ site_configuration = {
                     'resources': [
                         {
                             'name': 'gpu',
-                            'options': ['--gres=gpu:{num_gpus_per_node}', '--constraint=gpu']
+                            'options': ['--constraint=gpu']
                         },
                     ],
-                },
+                }, # dine2 nodes
                 {
                     'name': 'shm-node',
                     'descr': 'requires project code do016 in order to access: mad04 & mad05 with 0-3x NVIDIA A100 GPUs (4TB RAM)',
@@ -518,10 +518,10 @@ site_configuration = {
                     'resources': [
                         {
                             'name': 'gpu',
-                            'options': ['--gres=gpu:{num_gpus_per_node}', '--constraint=gpu']
+                            'options': ['--constraint=gpu']
                         },
                     ],
-                },
+                }, # NVIDIA A100 nodes
                 {
                     'name': 'shm2-node',
                     'descr': 'requires project code do018 in order to access: ga004 with 1x AMD MI100 GPU, ga005 and ga006 with 2x AMD MI200 GPUs',
@@ -543,10 +543,10 @@ site_configuration = {
                     'resources': [
                         {
                             'name': 'gpu',
-                            'options': ['--gres=gpu:{num_gpus_per_node}', '--constraint=gpu']
+                            'options': ['--constraint=gpu']
                         },
                     ],
-                },
+                }, # AMD A100 nodes
                 {
                     'name': 'mi300x-node',
                     'descr': 'requires project code do018 in order to access: ga007 8x AMD MI300 GPUs',
@@ -568,10 +568,10 @@ site_configuration = {
                     'resources': [
                         {
                             'name': 'gpu',
-                            'options': ['--gres=gpu:{num_gpus_per_node}', '--constraint=gpu']
+                            'options': ['--constraint=gpu']
                         },
                     ],
-                },
+                }, # MI300x node
                 #{
                 #    'name': 'cosma8-gracehopper-node',
                 #    'descr': 'requires project code do016 in order to access: gn003 with NVIDIA Grace-Hopper (ARM) system',
