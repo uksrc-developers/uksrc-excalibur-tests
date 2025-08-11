@@ -8,15 +8,13 @@ class FftBench(CMakePackage):
 
     maintainers("Marcus-Keil")
 
-    version("0.3", sha256="17225eccbfe2add2ffb498f5b00adaa8263d3ec0fdf781dc1110a974d685b89b")
-    version("0.2.b", sha256="9293756f0bf18043f92b85472209c9257e89605bbeb4bcc51bebaa2676be2858")
-    version("0.2", sha256="e2435efe7b871f332775bce9b08f9ac63afcaffc4057987bb4ef8eee2dfc9ff2")
+    version("0.3", sha256="586e26570a6a927a54b7163d11ec7cfe7306c140fd7ad7b401e26948b28530dc")
 
     variant("fftw", default=True, description="FFT Benchmark Base")
     depends_on("fftw", type="link")
 
-    variant("mkl", default=False, description="Enable Intel MKL for FFTW.")
-    depends_on("mkl", when="+mkl", type="link")
+#    variant("mkl", default=False, description="Enable Intel MKL for FFTW.")
+#    depends_on("mkl", when="+mkl", type="link")
 
     variant("cuda", default=False, description="Enable cuFFT Library.")
     depends_on("cuda", when="+cuda", type="link")
@@ -36,11 +34,11 @@ class FftBench(CMakePackage):
             "-DFFTW3_DIR={0}".format(self.spec['fftw'].prefix),
             self.define_from_variant("ONEAPI", "mkl")
         ]
-        if "+mkl" in self.spec:
-            args.extend([
-                self.define_from_variant("ONEAPI", "mkl"),
-                "-DONEAPI_DIR={0}".format(self.spec['mkl'].prefix)
-            ])
+#        if "+mkl" in self.spec:
+#            args.extend([
+#                self.define_from_variant("ONEAPI", "mkl"),
+#                "-DONEAPI_DIR={0}".format(self.spec['mkl'].prefix)
+#            ])
         if "+cuda" in self.spec:
             args.extend([
                 self.define_from_variant("CUDA_FFT", "cuda"),
@@ -56,10 +54,12 @@ class FftBench(CMakePackage):
         return args
 
     def install(self, spec, prefix):
-        src = (os.getcwd()[:os.getcwd().rfind("/")] +
-               "/spack-build-" +
-               str(spec)[str(spec).find("/")+1:str(spec).find("/")+8] +
-               "/FFT_Bench")
-        install_path = prefix + "/bin"
-        mkdir(install_path)
+    #    src = (os.getcwd()[:os.getcwd().rfind("/")] +
+    #           "/spack-build-" +
+    #           str(spec)[str(spec).find("/")+1:str(spec).find("/")+8] +
+    #           "/FFT_Bench")
+    #    install_path = prefix + "/bin"
+    #    mkdir(install_path)
+        cmake()
+        build()
         install(src, install_path)
