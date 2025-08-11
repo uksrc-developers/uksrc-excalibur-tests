@@ -8,11 +8,9 @@ class FftBench(CMakePackage):
 
     maintainers("Marcus-Keil")
 
+    version("0.3", sha256="17225eccbfe2add2ffb498f5b00adaa8263d3ec0fdf781dc1110a974d685b89b")
     version("0.2.b", sha256="9293756f0bf18043f92b85472209c9257e89605bbeb4bcc51bebaa2676be2858")
     version("0.2", sha256="e2435efe7b871f332775bce9b08f9ac63afcaffc4057987bb4ef8eee2dfc9ff2")
-
-    depends_on("c", type="build")
-    depends_on("cxx", type="build")
 
     variant("fftw", default=True, description="FFT Benchmark Base")
     depends_on("fftw", type="link")
@@ -25,6 +23,11 @@ class FftBench(CMakePackage):
 
     variant("rocm", default=False, description="Enable rocFFT Library.")
     depends_on("rocm", when="+rocm", type="link")
+    depends_on("hip", when="+rocm", type="link")
+
+    depends_on("c", type="build")
+    depends_on("cxx", type="build", when="-rocm")
+    depends_on("hipcc", type="build", when="+rocm")
 
     def cmake_args(self):
         print(self.spec["fftw"].prefix)
@@ -46,7 +49,8 @@ class FftBench(CMakePackage):
         if "+rocm" in self.spec:
             args.extend([
                 self.define_from_variant("ROC_FFT", "rocm"),
-                "-DROCM_DIR={}".format(self.spec['rocm'].prefix)
+                "-DROCM_DIR={}".format(self.spec['rocm'].prefix),
+                "-DHIP_DIR={}".format(self.spec['hip'].prefix)
             ])
         
         return args
