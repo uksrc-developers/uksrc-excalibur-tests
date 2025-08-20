@@ -1,6 +1,5 @@
-#from spack_repo.builtin.build_systems.generic import Package
+# from spack_repo.builtin.build_systems.generic import Package
 from spack.package import *
-import os
 
 class FftBench(CMakePackage):
     homepage = "https://github.com/Marcus-Keil/FFT_Benchmark"
@@ -8,61 +7,53 @@ class FftBench(CMakePackage):
 
     maintainers("Marcus-Keil")
 
-    version("0.3", sha256="586e26570a6a927a54b7163d11ec7cfe7306c140fd7ad7b401e26948b28530dc")
+    version("0.3", sha256="dfccfb12d6d320c3838076fbb6e29498e781274b3944e042af30450c35c1e5e2")
 
     variant("fftw", default=True, description="FFT Benchmark Base")
-#    variant("mkl", default=False, description="Enable Intel MKL for FFTW.")
+    #    variant("mkl", default=False, description="Enable Intel MKL for FFTW.")
     variant("cuda", default=False, description="Enable cuFFT Library.")
     variant("rocm", default=False, description="Enable rocFFT Library.")
 
-    depends_on("fftw", type="link")
-#    depends_on("mkl", when="+mkl", type="link")
-    depends_on("cuda", when="+cuda", type="link")
-    depends_on("rocm", when="+rocm", type="link")
-    depends_on("hip", when="+rocm", type="link")
-    depends_on("rocfft", when="+rocm", type="link")
+    depends_on("cmake@3.18:", type="build")
+    depends_on("openmpi", type="build")
+    depends_on("fftw")
+    #    depends_on("mkl", when="+mkl")
+    depends_on("cuda", when="+cuda")
+    depends_on("rocfft", when="+rocm")
+    depends_on("hip", when="+rocm")
+    #depends_on("rocm-cmake", when="+rocm", type="build")
 
-    conflicts("+cuda", when="+rocm", msg="CUDA and ROCm support are mutually exclusive.")
+    # Make the backends mutually exclusive if the project can't build both
+    conflicts("+cuda", when="+rocm", msg="CUDA and ROCm backends are mutually exclusive")
 
     def cmake_args(self):
-        print(self.spec["fftw"].prefix)
         args = [
-            "-DFFTW3_DIR={0}".format(self.spec['fftw'].prefix),
+            self.define("BUILD_SHARED_LIBS", True),
+            self.define("CMAKE_CXX_FLAGS", "-fopenmp"),
+            self.define("CMAKE_EXE_LINKER_FLAGS", "-fopenmp"),
+            self.define("FFTW3_DIR", self.spec['fftw'].prefix)
         ]
-#        if "+mkl" in self.spec:
-#            args.extend([
-#                self.define_from_variant("ONEAPI", "mkl"),
-#                "-DONEAPI_DIR={0}".format(self.spec['mkl'].prefix)
-#            ])
-        if "+cuda" in self.spec:
-            args.extend([
-                self.define_from_variant("CUDA_FFT", "cuda"),
-                "-DCUDA_DIR={0}".format(self.spec['cuda'].prefix)
-            ])
-        if "+rocm" in self.spec:
-            args.extend([
-                self.define_from_variant("ROC_FFT", "rocm"),
-                self.define("ROCM_DIR", self.spec["rocfft"].prefix),
-                self.define("HIP_DIR", self.spec["hip"].prefix),
-#                "-DROCM_DIR={}".format(self.spec['rocm'].prefix),
-#                "-DHIP_DIR={}".format(self.spec['hip'].prefix)
-            ])
+
+        if self.spec.satisfies("+cuda"):
+            #            args.append(self.define("CMAKE_CXX_COMPILER", join_path(self.spec["llvm"].prefix.bin, "clang++")))
+            args.append(self.define_from_variant("CUDA_FFT", "cuda"))
+            args.append(self.define("CUDA_DIR", self.spec["cuda"].prefix))
+
+        if self.spec.satisfies("+rocm"):
+            # If the project *requires* the hip compiler driver, set it here.
+            # Otherwise, prefer Spack's cxx wrapper and just pass HIP/ROCM dirs.
+            hipcc = join_path(self.spec["hip"].prefix.bin, "hipcc")
+            args.append(self.define("CMAKE_CXX_COMPILER", hipcc))
+            args.append(self.define_from_variant("ROC_FFT", "rocm"))
+            args.append(self.define("ROCM_DIR", self.spec["rocfft"].prefix))
+            args.append(self.define("HIP_DIR", self.spec["hip"].prefix))
+        #        else:
+        #            args.append(self.define("CMAKE_CXX_COMPILER", join_path(self.spec["llvm"].prefix.bin, "clang++")))
         return args
 
     def install(self, spec, prefix):
-        exe_path = join_path(self.build_directory, "fft-bench")
-        if not os.path.isfile(exe_path):
-            raise FileNotFoundError(f"Expected binary not found: {exe_path}")
+        mkdirp(prefix)
         mkdirp(prefix.bin)
-        install(exe_path, prefix.bin)
 
-#    def install(self, spec, prefix):
-#    #    src = (os.getcwd()[:os.getcwd().rfind("/")] +
-#    #           "/spack-build-" +
-#    #           str(spec)[str(spec).find("/")+1:str(spec).find("/")+8] +
-#    #           "/FFT_Bench")
-#    #    install_path = prefix + "/bin"
-#    #    mkdir(install_path)
-#        cmake()
-#        build()
-#        install(src, install_path)
+        with working_dir(self.build_directory):
+            install("FFT_Bench", prefix.bin)

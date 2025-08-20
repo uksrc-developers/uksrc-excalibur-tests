@@ -6,8 +6,8 @@ from reframe.core.backends import getlauncher
 from reframe.core.builtins import sanity_function, parameter, run_before, run_after
 from benchmarks.modules.utils import SpackTest
 
-number_of_memory_points = '1'
-number_of_runs = '1'
+NUMBER_OF_TRANSFORMS = '1'
+NUMBER_OF_REPEATS = '1'
 
 class FfftBenmchmarkBase(SpackTest):
     # Systems and programming environments where to run this benchmark.
@@ -72,7 +72,8 @@ class FfftBenmchmarkBase(SpackTest):
 @rfm.simple_test
 class FftBenchmarkCPU(FfftBenmchmarkBase):
     valid_systems = ['-gpu']
-    spack_spec = 'fft-bench@0.3+fftw'
+    spack_spec = 'fft-bench@0.3+fftw~cuda~rocm'
+    spack_logfile = 'spack-build-log-fftw.txt'
 
     # Arguments to pass to the program above to run the benchmarks.
     # -o str = Path to outputfile
@@ -81,8 +82,8 @@ class FftBenchmarkCPU(FfftBenmchmarkBase):
     # -a Run with AMD rocFFT Library
     # -r int = Number of runs to perform (min 1, max 7)
     # -c int = Number of times to repeat the transforms, for averaging times.
-    output_file = "./FFTW_only.txt"
-    executable_opts = ["-o", output_file, "-f", "-r", number_of_memory_points, "-c", number_of_runs]
+    output_file = '"./FFTW_only.txt"'
+    executable_opts = ["-o", output_file, "-f", "-r", NUMBER_OF_TRANSFORMS, "-c", NUMBER_OF_REPEATS]
 
     @run_after('setup')
     def setup_variables(self):
@@ -108,11 +109,12 @@ class FftBenchmarkCPU(FfftBenmchmarkBase):
 @rfm.simple_test
 class FftBenchmarkCUDA(FfftBenmchmarkBase):
     valid_systems = ['+gpu +cuda']
-    spack_spec = 'fft-bench@0.3+cuda'
+    spack_spec = 'fft-bench@0.3+cuda~rocm'
+    spack_logfile = 'spack-build-log-cuda.txt'
     num_gpus_per_node = 1
 
-    output_file = "./FFTW_cuFFT.txt"
-    executable_opts = ["-o", output_file, "-f", "-n", "-r", number_of_memory_points, "-c", number_of_runs]
+    output_file = '"FFTW_cuFFT.txt"'
+    executable_opts = ["-o", output_file, "-f", "-n", "-r", NUMBER_OF_TRANSFORMS, "-c", NUMBER_OF_REPEATS]
 
     @run_after('setup')
     def setup_variables(self):
@@ -125,11 +127,12 @@ class FftBenchmarkCUDA(FfftBenmchmarkBase):
 @rfm.simple_test
 class FftBenchmarkROCM(FfftBenmchmarkBase):
     valid_systems = ['+gpu +rocm']
-    spack_spec = 'fft-bench@0.3+rocm'
+    spack_spec = 'fft-bench@0.3+rocm~cuda'
+    spack_logfile = 'spack-build-log-rocm.txt'
     num_gpus_per_node = 1
 
-    output_file = "./FFTW_rocFFT.txt"
-    executable_opts = ["-o", output_file, "-f", "-a", "-r", number_of_memory_points, "-c", number_of_runs]
+    output_file = '"FFTW_rocFFT.txt"'
+    executable_opts = ["-o", output_file, "-f", "-a", "-r", NUMBER_OF_TRANSFORMS, "-c", NUMBER_OF_REPEATS]
 
     @run_after('setup')
     def setup_variables(self):
