@@ -1,0 +1,12 @@
+name: DB Scraper
+run-name: ${{ github.actor }} is running DB Scraper
+on:
+  workflow_dispatch: {}
+  workflow_call: {}
+
+jobs:
+  # This searches the framework repo for all available runners and submits all workflows to them.
+  discover-runners:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
