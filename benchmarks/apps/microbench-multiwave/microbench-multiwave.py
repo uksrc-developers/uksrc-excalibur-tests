@@ -67,6 +67,9 @@ class MicrobenchMULTIWAVE(ContainerTest):
     @run_before('run')
     def add_prerun_cmds(self):
         self.prerun_cmds = [
+            f"touch {self.stagedir}/rfm_build.out",
+            f"touch {self.stagedir}/rfm_build.err",
+            f"touch {self.stagedir}/rfm_build.sh",
             f"echo '#!/bin/bash' >> {self.outputdir}/ssh_job.sh",
             f"echo 'sourcefind.py --intfile low-mosaic-blanked.fits' >> {self.outputdir}/ssh_job.sh",
             f"cp {self.data_dir}/low-mosaic-blanked.fits {self.outputdir}/low-mosaic-blanked.fits",

@@ -14,6 +14,7 @@ class MicrobenchLOFARINT(ContainerTest):
     bench_name="MicrobenchLOFARINT"
     valid_systems = ['*']
     valid_prog_environs = ['default']
+    output_file = "Default.txt"
     run_only_test = True
 
     code_dir = ""
@@ -101,6 +102,9 @@ class MicrobenchLOFARINT(ContainerTest):
             f"mkdir {self.output_dir}",
             f"mkdir {self.tmpout_dir}",
             '',
+            f"touch {self.stagedir}/rfm_build.out",
+            f"touch {self.stagedir}/rfm_build.err",
+            f"touch {self.stagedir}/rfm_build.sh",
             f'export CWL_SINGULARITY_CACHE={self.vlbi_singularity_dir}',
             "export SINGULARITY_CACHEDIR=${CWL_SINGULARITY_CACHE}",
             "export APPTAINER_CACHEDIR=${CWL_SINGULARITY_CACHE}",

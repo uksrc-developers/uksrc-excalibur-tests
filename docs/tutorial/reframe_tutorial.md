@@ -13,7 +13,7 @@ This tutorial is adapted from [ReFrame 4.5 tutorials](https://reframe-hpc.readth
 
 > ReFrame Tutorials
 
-There's a [new tutorial](https://reframe-hpc.readthedocs.io/en/v4.6.0/tutorial.html) with a slightly different approach in ReFrame 4.6.
+There's a [new tutorial](https://reframe-hpc.readthedocs.io/en/stable/tutorial.html) with a slightly different approach since ReFrame 4.6.
 
 ---
 
@@ -99,7 +99,7 @@ The data members and methods detailed in the following sections should be placed
 - `valid_systems` for where this test can run. For now we haven't defined any systems so we leave it as `'*'` (any system)
 - `valid_prog_environs` for what compilers this test can build with. More on it later.
 - In a test with a single source file, it is enough to define `sourcepath`. More on build systems later.
-- We could add `sourcesdir` to point to the source directory, but it defaults to `src/`
+- We could add `sourcesdir` to point to the source directory, but it defaults to `src/`. Therefore, the source file `hello.c` should be inside `src/`.
 
 ```python
     valid_systems = ['*']
@@ -145,7 +145,7 @@ compiling a C++ or Fortran code will fail
 ## Configuring ReFrame for HPC systems
 > In ReFrame, all the details of the various interactions of a test with the system environment are handled transparently and are set up in its [configuration file](https://reframe-hpc.readthedocs.io/en/v4.5.2/tutorial_basics.html#more-of-hello-world).
 
-For the minimum configuration to run jobs on the system we need to
+For the minimum configuration to run jobs on the system we need to add the following to a separate python file.
 
 === "Cosma"
 
@@ -153,20 +153,20 @@ For the minimum configuration to run jobs on the system we need to
     - Set the module system for accessing centrally installed modules
     - Create a compute node partition
       - Set a scheduler and a MPI launcher to run on compute nodes
-        - On Cosma, the scheduler rejects jobs that don't set a time limit. Add `time_limit = 1m` to ReFrame tests to run on Cosma or set from command line with `-S time_limit='1m'`
+        - On Cosma, the scheduler rejects jobs that don't set a time limit. Add `time_limit = '1m'` to ReFrame tests to run on Cosma or set from command line with `-S time_limit='1m'`
       - Set access options
 	```
 	'access': ['--partition=bluefield1', '--account=do009'],
 	```
     - Create at least one programming environment to set compilers
 
-	```python
+    ```python
     site_configuration = {
         'systems' : [
             {
                 'name': 'cosma',
                 'descr': 'Cosma for performance workshop',
-                'hostnames': ['login[0-9][a-z].pri.cosma[0-9].alces.network'],
+                'hostnames': ['login[0-9][a-z].pri.cosma.local'],
                 'modules_system': 'tmod4',
                 'partitions': [
                     {
@@ -189,19 +189,19 @@ For the minimum configuration to run jobs on the system we need to
             },
         ]
     }
-	```
+    ```
 
 === "ARCHER2"
 
-	- Create a system with a name and a description
-	- Set the module system for accessing centrally installed modules
-	- Create a compute node partition
-	  - Set a scheduler and a MPI launcher to run on compute nodes
-	  - Set access options with 
+    - Create a system with a name and a description
+    - Set the module system for accessing centrally installed modules
+    - Create a compute node partition
+      - Set a scheduler and a MPI launcher to run on compute nodes
+      - Set access options with 
     ```
-	'access': ['--partition=standard', '--qos=short'],
-	```
-	- Create at least one programming environment to set compilers
+    'access': ['--partition=standard', '--qos=short'],
+    ```
+    - Create at least one programming environment to set compilers
 
     ```python
     site_configuration = {
@@ -230,7 +230,14 @@ For the minimum configuration to run jobs on the system we need to
             },
         ]
     }
-	```
+    ```
+To run the benchmark with your configuration, you can either pass the file path in the command line
+```
+reframe -c path/to/benchmark -C path/to/config -r
+```
+or set it with the environment variable `$RFM_CONFIG_FILES`.
+
+
 
 ---
 
@@ -238,6 +245,7 @@ For the minimum configuration to run jobs on the system we need to
 
 Performance tests capture data in performance variables. For simplicity, we use the [STREAM benchmark](https://github.com/jeffhammond/STREAM) as an example. It is the de facto memory bandwidth benchmark. It has four kernels that stream arrays from memory and
 perform different floating point operations on them.
+
 - Copy: `A = B`
 - Scale: `C = a * B`
 - Add: `C = A + B`
@@ -262,6 +270,12 @@ You can adapt these to your system, or keep using `'*'` to run on any platform.
         valid_systems = ['cosma']
         valid_prog_environs = ['gnu']
 	```
+
+Remember that Cosma needs the time limit of the job defined.
+	```python
+	time_limit = '1m'
+	```
+	
 	
 === "ARCHER2"
 
@@ -292,9 +306,12 @@ We can retrieve specifically a Git repository by assigning its URL directly to t
 We can set environment variables in the `env_vars` dictionary.
 
 ```python
-    self.env_vars['OMP_NUM_THREADS'] = 4
-    self.env_vars['OMP_PLACES'] = 'cores'
+    num_cpus_per_task = 4
+    env_vars['OMP_NUM_THREADS'] = num_cpus_per_task
+    env_vars['OMP_PLACES'] = 'cores'
 ```
+Note the use of the special ReFrame variable [`num_cpus_per_task`](https://reframe-hpc.readthedocs.io/en/stable/regression_test_api.html#reframe.core.pipeline.RegressionTest.num_cpus_per_task) here, that will propagate the information of how many CPU cores to request to the script submitted to the scheduler.
+
 
 ----
 
@@ -368,13 +385,17 @@ ReFrame can automate checking that the results fall within an expected range. Yo
 
 ## Parametrized tests
 
-You can pass a list to the `parameter()` built-in function in the class body to create a parametrized test. You cannot access the individual parameter value within the class body, so any reference to them should be placed in the appropriate function, for example `__init__()`
+You can pass a list to the `parameter()` built-in function in the class body to create a parametrized test. However, you cannot access the individual parameter value within the class body, so any reference to them should be placed in the appropriate function, for example `__init__()`
 
 For parametrisation you can add for example
 ```python
     arraysize = parameter([5,15,25])
+```
+to the class body, and keep
+```python
     self.build_system.cppflags = [f'-DSTREAM_ARRAY_SIZE=$((2 ** {self.arraysize}))']
 ```
+to access it inside the `set_compiler_flags` function.
 
 You can have multiple parameters. ReFrame will run all parameter combinations by default.
 
