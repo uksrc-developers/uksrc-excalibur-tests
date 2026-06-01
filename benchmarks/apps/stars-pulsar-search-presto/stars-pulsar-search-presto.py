@@ -84,7 +84,7 @@ class STARSpulsarsearchpresto(ContainerTest):
     def validate(self):
         #test_fits = fits.open(os.path.join(self.outputdir, "crossmatch_cat.fits"))
         #return test_fits[1].data.shape[0] > 0
-	return True
+        return True
 
     @run_before("performance")
     def output_list_dict(self):
