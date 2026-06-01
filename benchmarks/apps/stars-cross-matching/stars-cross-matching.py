@@ -42,8 +42,9 @@ class STARScrossmatch(ContainerTest):
                 shell=True
             )
             subprocess.run(
-                f"singularity pull docker://registry.gitlab.com/ska-telescope/src/src-workloads/cross-matching {os.path.join(self.code_dir, 'singularity_images/cross-matching.sif')}",
+                f"singularity pull docker://registry.gitlab.com/ska-telescope/src/src-workloads/cross-matching",
                 shell=True)
+            subprocess.run(f"mv cross-match.sif singularity_images/cross-matching.sif", shell=True)
 
     @run_before('run')
     def add_prerun_cmds(self):
