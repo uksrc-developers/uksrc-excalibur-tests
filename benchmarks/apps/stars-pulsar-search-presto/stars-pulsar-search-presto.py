@@ -70,6 +70,8 @@ class STARSpulsarsearchpresto(ContainerTest):
         os.mkdir(os.path.join(self.outputdir, "logs"))
         self.executable_opts = [
             "exec",
+            "--pwd",
+            "/data",
             "--env",
             "DATA=big"
             "--no-home",
