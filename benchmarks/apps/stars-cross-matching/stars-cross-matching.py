@@ -55,7 +55,7 @@ class STARScrossmatch(ContainerTest):
             f"touch {self.stagedir}/rfm_build.err",
             f"touch {self.stagedir}/rfm_build.sh",
             f"echo '#!/bin/bash' >> {self.outputdir}/ssh_job.sh",
-            f"echo '/scripts/run-task.sh' >> {self.outputdir}/ssh_job.sh",
+            f"echo '/scripts/run-task.sh' >> {self.data_dir}/ssh_job.sh",
             f"echo \"Workflow start: $(date '+%Y-%m-%d %H:%M:%S')\" > {self.outputdir}/output.log"
         ]
         self.postrun_cmds = [
@@ -69,7 +69,7 @@ class STARScrossmatch(ContainerTest):
             "exec",
             "--no-home",
             "--bind",
-            f"{self.data_dir}:/data",
+            f"{self.outputdir}:/data",
             os.path.join(self.code_dir, "singularity_images/cross-matching.sif"),
             f"bash",
             os.path.join(self.outputdir, "ssh_job.sh")
@@ -77,5 +77,5 @@ class STARScrossmatch(ContainerTest):
 
     @sanity_function
     def validate(self):
-        return True
-
+        test_fits = fits.open(os.path.join(self.outputdir, "crossmatch_cat.fits"))
+        return test_fits[1].data.shape[0] > 0
