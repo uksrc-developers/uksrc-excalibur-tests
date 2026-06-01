@@ -27,8 +27,6 @@ class STARScrossmatch(ContainerTest):
 
     output_dict_list = []
 
-    profiler = False
-
     @run_after('setup')
     def copy_dirs_stage(self):
         self.code_dir = os.path.join(self.stagedir, "STARS_crossmatch_Code")
