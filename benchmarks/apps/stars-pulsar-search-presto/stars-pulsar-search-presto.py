@@ -48,7 +48,6 @@ class STARSpulsarsearchpresto(ContainerTest):
                 shell=True)
             subprocess.run(f"mv pulsar-search-presto_latest.sif {os.path.join(self.code_dir, 'singularity_images/pulsar-search-presto.sif')}", shell=True)
         if not os.path.isfile(os.path.join(self.data_dir, "splice_0001.fits")):
-
             subprocess.run(f"wget -nc https://zenodo.org/records/10989783/files/splice_0001.fits?download=1 -O {os.path.join(self.data_dir, 'splice_0001.fits')}", shell=True)
 
 
