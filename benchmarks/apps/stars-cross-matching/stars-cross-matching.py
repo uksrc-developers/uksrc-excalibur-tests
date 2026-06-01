@@ -55,7 +55,7 @@ class STARScrossmatch(ContainerTest):
             f"touch {self.stagedir}/rfm_build.err",
             f"touch {self.stagedir}/rfm_build.sh",
             f"echo '#!/bin/bash' >> {self.outputdir}/ssh_job.sh",
-            f"echo '/scripts/run-task.sh' >> {self.data_dir}/ssh_job.sh",
+            f"echo '/scripts/run-task.sh' >> {self.outputdir}/ssh_job.sh",
             f"echo \"Workflow start: $(date '+%Y-%m-%d %H:%M:%S')\" > {self.outputdir}/output.log"
         ]
         self.postrun_cmds = [
