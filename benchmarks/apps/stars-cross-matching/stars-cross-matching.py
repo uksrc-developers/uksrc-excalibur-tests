@@ -79,3 +79,38 @@ class STARScrossmatch(ContainerTest):
     def validate(self):
         test_fits = fits.open(os.path.join(self.outputdir, "crossmatch_cat.fits"))
         return test_fits[1].data.shape[0] > 0
+
+    @run_before("performance")
+    def output_list_dict(self):
+        """
+        In order to use the database handler perflog 'swiftdb', self.output_dict_list must be defined.
+        This dictionary should include at least:
+        - TimeOfTest [str]
+        - SystemPartition [str]
+        - <Desired Output variables> [Format Determined by entry]
+        """
+        start_str = sn.evaluate(sn.extractsingle(
+            r'Workflow start: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
+            pathlib.Path(self.outputdir) / pathlib.Path("output.log"),
+            tag=1
+        ))
+        finish_str = sn.evaluate(sn.extractsingle(
+            r'Workflow end: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
+            pathlib.Path(self.outputdir) / pathlib.Path("output.log"),
+            tag=1
+        ))
+        start = dt.strptime(start_str, "%Y-%m-%d %H:%M:%S")
+        finish = dt.strptime(finish_str, "%Y-%m-%d %H:%M:%S")
+
+        elapsed_seconds = (finish - start).total_seconds()
+
+        time_of_test = str(dt.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+        self.output_dict_list += [
+            {
+                "TimeOfTest": time_of_test,
+                "SystemPartition": f"{os.environ.get('GH_RUNNER')} - {self.current_system.name} - {self.current_partition.name}",
+                "ExecutionTime": elapsed_seconds
+            }
+        ]
+        print(self.output_dict_list)
