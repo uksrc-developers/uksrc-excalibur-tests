@@ -293,7 +293,7 @@ class ContainerTest(rfm.RegressionTest, special=True):
 
     @run_before('compile')
     def add_profiler(self):
-        if self.profiler:
+        if hasattr(self, profiler):
             # Command to use to view profiling traces
             viewer_cmd = None
             # Arguments to pass to the viewer
