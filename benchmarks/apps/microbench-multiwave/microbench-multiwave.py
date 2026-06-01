@@ -85,6 +85,7 @@ class MicrobenchMULTIWAVE(ContainerTest):
         os.mkdir(os.path.join(self.outputdir, "logs"))
         self.executable_opts = [
             "exec",
+            "--no-home",
             "--bind",
             f"{self.data_dir}:{self.data_dir}",
             "--bind",
