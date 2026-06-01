@@ -72,7 +72,7 @@ class STARScrossmatch(ContainerTest):
             f"{self.outputdir}:/data",
             os.path.join(self.code_dir, "singularity_images/cross-matching.sif"),
             f"bash",
-            os.path.join(self.outputdir, "ssh_job.sh")
+            os.path.join("/data/ssh_job.sh")
         ]
 
     @sanity_function
