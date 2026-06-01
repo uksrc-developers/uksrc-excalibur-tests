@@ -9,6 +9,8 @@ from reframe.core.builtins import sanity_function, parameter, run_before, run_af
 
 from benchmarks.modules.utils import ContainerTest
 
+from astropy.io import fits
+
 @rfm.simple_test
 class STARScrossmatch(ContainerTest):
     bench_name="STARScrossmatch"
@@ -65,7 +67,16 @@ class STARScrossmatch(ContainerTest):
         os.mkdir(os.path.join(self.outputdir, "logs"))
         self.executable_opts = [
             "exec",
+            "--no-home",
+            "--bind",
+            f"{self.data_dir}:/data",
             os.path.join(self.code_dir, "singularity_images/cross-matching.sif"),
             f"bash",
             os.path.join(self.outputdir, "ssh_job.sh")
         ]
+
+    @sanity_function
+    def validate(self):
+        test_fits = fits.open(os.path.join(self.datadir, "crossmatch_cat.fits"))
+        return test_fits[1].data.shape[0] > 0
+
