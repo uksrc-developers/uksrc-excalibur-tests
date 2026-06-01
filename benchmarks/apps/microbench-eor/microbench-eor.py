@@ -75,6 +75,7 @@ class MicrobenchEOR(ContainerTest):
         os.mkdir(os.path.join(self.outputdir, "outputs"))
         self.executable_opts = [
             "run",
+            "--no-home",
             "--bind", f"{self.data_dir}:/data",
             "--bind", f"{self.outputdir}:/project",
             os.path.join(self.code_dir, 'singularity_images/hera-pspec-mambaorg.sif'),
