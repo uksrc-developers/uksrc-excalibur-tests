@@ -85,6 +85,12 @@ class MicrobenchMULTIWAVE(ContainerTest):
         os.mkdir(os.path.join(self.outputdir, "logs"))
         self.executable_opts = [
             "exec",
+            "--bind",
+            f"{self.data_dir}:{self.data_dir}",
+            "--bind",
+            f"{self.outputdir}:{self.outputdir}",
+            "--bind",
+            f"{self.code_dir}:{self.code_dir}",
             os.path.join(self.code_dir, "singularity_images/pybdsf.sif"),
             f"bash",
             os.path.join(self.outputdir, "ssh_job.sh")
