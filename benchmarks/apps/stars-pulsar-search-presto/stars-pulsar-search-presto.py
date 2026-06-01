@@ -23,7 +23,7 @@ class STARSpulsarsearchpresto(ContainerTest):
 
     tasks = parameter([1])
     num_tasks_per_node = 1
-    cpus_per_task = parameter([4])
+    cpus_per_task = parameter([16])
 
     executable = "singularity"
 
@@ -58,6 +58,7 @@ class STARSpulsarsearchpresto(ContainerTest):
             f"touch {self.stagedir}/rfm_build.err",
             f"touch {self.stagedir}/rfm_build.sh",
             f"echo '#!/bin/bash' >> {self.outputdir}/ssh_job.sh",
+            f"echo 'export OMP_NUM_THREADS={self.cpus_per_task[0]}' >> {self.outputdir}/ssh_job.sh",
             f"echo '/scripts/run-task.sh' >> {self.outputdir}/ssh_job.sh",
             f"echo \"Workflow start: $(date '+%Y-%m-%d %H:%M:%S')\" > {self.outputdir}/output.log"
         ]
