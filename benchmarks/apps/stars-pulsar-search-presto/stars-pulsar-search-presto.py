@@ -74,7 +74,7 @@ class STARSpulsarsearchpresto(ContainerTest):
             "--pwd",
             "/data",
             "--env",
-            "DATA=big"
+            "DATA=big",
             "--bind",
             f"{self.outputdir}:/output",
             "--bind",
