@@ -442,7 +442,7 @@ class STARSTest(ContainerTest):
     execute_script = "/scripts/run-task.sh"
     # dataset is a list of dicts with "filename" and "url" fields
     dataset = []
-    env = ''
+    env = 'DUMM_VAR=123'
 
 
 
