@@ -1,6 +1,5 @@
 import os
 
-
 import reframe as rfm
 from reframe.core.builtins import sanity_function
 
