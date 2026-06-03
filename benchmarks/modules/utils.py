@@ -497,7 +497,7 @@ class STARSTest(ContainerTest):
             "--pwd",
             "/data",
             "--env",
-            f"{self.env}"
+            f"{self.env}",
             "--bind",
             f"{self.outputdir}:/output",
             "--bind",
