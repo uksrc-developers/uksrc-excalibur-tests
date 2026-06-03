@@ -15,6 +15,6 @@ class STARScrossmatch(STARSTest):
 
     @sanity_function
     def validate(self):
-        test_fits = fits.open(os.path.join(self.outputdir, "crossmatch_cat.fits"))
+        test_fits = fits.open(os.path.join(self.data_dir, "crossmatch_cat.fits"))
         return test_fits[1].data.shape[0] > 0
 
