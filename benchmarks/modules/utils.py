@@ -437,7 +437,7 @@ class STARSTest(ContainerTest):
     output_dict_list = []
     container_url = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/generic"
     container_name = container_url.rsplit("/", 1)[-1]
-    container_path = os.path.join(self.code_dir, f"singularity_images/{container_name}.sif")
+    container_path = os.path.join(code_dir, f"singularity_images/{container_name}.sif")
     execute_script = "/scripts/run-task.sh"
     # dataset is a list of dicts with "filename" and "url" fields
     dataset = []
