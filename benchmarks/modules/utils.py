@@ -442,6 +442,7 @@ class STARSTest(ContainerTest):
     execute_script = "/scripts/run-task.sh"
     # dataset is a list of dicts with "filename" and "url" fields
     dataset = []
+    env = ''
 
 
 
@@ -495,6 +496,8 @@ class STARSTest(ContainerTest):
             "--no-home",
             "--pwd",
             "/data",
+            "--env",
+            f"{self.env}"
             "--bind",
             f"{self.outputdir}:/output",
             "--bind",
