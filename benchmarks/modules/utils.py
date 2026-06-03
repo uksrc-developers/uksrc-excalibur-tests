@@ -447,7 +447,7 @@ class STARSTest(ContainerTest):
 
     @run_after('setup')
     def copy_dirs_stage(self):
-        self.bench_name=f"STARS_{self.stars_name}"
+        self.bench_name=f"STARS_{self.stars_name.replace('-','_')}"
         self.code_dir = os.path.join(self.stagedir, f"{self.bench_name}_Code")
         os.makedirs(self.code_dir, exist_ok=True)
         self.data_dir = os.path.join(self.stagedir, f"{self.bench_name}_Data")
