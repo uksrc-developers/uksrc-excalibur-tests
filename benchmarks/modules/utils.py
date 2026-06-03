@@ -431,6 +431,10 @@ class STARSTest(ContainerTest):
     code_dir = ""
     data_dir = ""
 
+    tasks = parameter([1])
+    num_tasks_per_node = 1
+    cpus_per_task = parameter([1]) 
+
     executable = "singularity"
 
     output_dict_list = []
