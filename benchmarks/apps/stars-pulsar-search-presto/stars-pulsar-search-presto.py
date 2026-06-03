@@ -15,7 +15,7 @@ class STARScrossmatch(STARSTest):
 
     # dataset is a list of dicts with "filename" and "url" fields
     dataset = [{"filename":"splice_0001.fits", "url":"https://zenodo.org/records/10989783/files/splice_0001.fits?download=1"}]
-    env = 'DATA=big"'
+    env = 'DATA=big'
 
     @sanity_function
     def validate(self):
