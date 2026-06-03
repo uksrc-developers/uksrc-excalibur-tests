@@ -10,7 +10,7 @@ from astropy.io import fits
 
 @rfm.simple_test
 class STARScrossmatch(STARSTest):
-    bench_name="STARScrossmatch"
+    stars_name="cross-matching"
     container_url = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/cross-matching"
 
     @sanity_function
