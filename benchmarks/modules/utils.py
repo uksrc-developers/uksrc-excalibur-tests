@@ -416,6 +416,125 @@ class ContainerTest(rfm.RegressionTest, special=True):
             return True
         return super().compile_complete()
 
+# Subclass to make importing STARS benchmarks easier
+class STARSTest(ContainerTest):
+    stars_name="generic"
+    bench_name=f"STARS_{stars_name}"
+
+    valid_systems = ['*']
+    valid_prog_environs = ['default']
+    run_only_test = True
+
+    code_dir = ""
+    data_dir = ""
+
+    tasks = parameter([1])
+    num_tasks_per_node = 1
+    cpus_per_task = parameter([16])
+
+    executable = "singularity"
+
+    output_dict_list = []
+    container_url = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/generic"
+    container_name = container_url.rsplit("/", 1)[-1]
+    container_path = os.path.join(self.code_dir, f"singularity_images/{container_name}.sif")
+    execute_script = "/scripts/run-task.sh"
+    # dataset is a list of dicts with "filename" and "url" fields
+    dataset = []
+
+
+
+    @run_after('setup')
+    def copy_dirs_stage(self):
+        self.code_dir = os.path.join(self.stagedir, f"{bench_name}_Code")
+        os.makedirs(self.code_dir, exist_ok=True)
+        self.data_dir = os.path.join(self.stagedir, f"{bench_name}_Data")
+        os.makedirs(self.data_dir, exist_ok=True)
+
+    @run_after('setup')
+    def download_code(self):
+        if not os.path.isfile(self.container_path):
+            subprocess.run(
+                f"mkdir {os.path.join(self.code_dir, 'singularity_images')}",
+                shell=True
+            )
+            subprocess.run(
+                f"singularity pull {self.container_url}",
+                shell=True)
+            subprocess.run(f"mv {self.container_name}_latest.sif {self.container_path}", shell=True)
+        for a in dataset:
+           if not os.path.isfile(os.path.join(self.data_dir, a['filename'])):
+              subprocess.run(f"wget -nc {a['url']} -O {os.path.join(self.data_dir, a['filename'])}", shell=True)
+
+    @run_before('run')
+    def add_prerun_cmds(self):
+        self.prerun_cmds = [
+            f"touch {self.stagedir}/rfm_build.out",
+            f"touch {self.stagedir}/rfm_build.err",
+            f"touch {self.stagedir}/rfm_build.sh",
+            f"echo '#!/bin/bash' >> {self.outputdir}/ssh_job.sh",
+            f"echo 'export OMP_NUM_THREADS={self.cpus_per_task}' >> {self.outputdir}/ssh_job.sh",
+            f"echo '{execute_script}' >> {self.outputdir}/ssh_job.sh",
+            f"echo \"Workflow start: $(date '+%Y-%m-%d %H:%M:%S')\" > {self.outputdir}/output.log"
+        ]
+        self.postrun_cmds = [
+            f"echo \"Workflow end: $(date '+%Y-%m-%d %H:%M:%S')\" >> {self.outputdir}/output.log"
+        ]
+
+    @run_before('run')
+    def set_executable_opts(self):
+        os.mkdir(os.path.join(self.outputdir, "logs"))
+        self.executable_opts = [
+            "exec",
+            "--no-home",
+            "--pwd",
+            "/data",
+            "--env",
+            "DATA=big",
+            "--bind",
+            f"{self.outputdir}:/output",
+            "--bind",
+            f"{self.data_dir}:/data",
+            os.path.join(self.container_path),
+            f"bash",
+            os.path.join("/output/ssh_job.sh")
+        ]
+
+    @run_before("performance")
+    def output_list_dict(self):
+        """
+        In order to use the database handler perflog 'swiftdb', self.output_dict_list must be defined.
+        This dictionary should include at least:
+        - TimeOfTest [str]
+        - SystemPartition [str]
+        - <Desired Output variables> [Format Determined by entry]
+        """
+        start_str = sn.evaluate(sn.extractsingle(
+            r'Workflow start: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
+            pathlib.Path(self.outputdir) / pathlib.Path("output.log"),
+            tag=1
+        ))
+        finish_str = sn.evaluate(sn.extractsingle(
+            r'Workflow end: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
+            pathlib.Path(self.outputdir) / pathlib.Path("output.log"),
+            tag=1
+        ))
+        start = dt.strptime(start_str, "%Y-%m-%d %H:%M:%S")
+        finish = dt.strptime(finish_str, "%Y-%m-%d %H:%M:%S")
+
+        elapsed_seconds = (finish - start).total_seconds()
+
+        time_of_test = str(dt.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+        self.output_dict_list += [
+            {
+                "TimeOfTest": time_of_test,
+                "SystemPartition": f"{os.environ.get('GH_RUNNER')} - {self.current_system.name} - {self.current_partition.name}",
+                "ExecutionTime": elapsed_seconds
+            }
+        ]
+        print(self.output_dict_list)
+
 
 class SpackTest(ContainerTest): #(rfm.RegressionTest):
     build_system = 'Spack'
