@@ -15,6 +15,8 @@ from reframe.core.logging import getlogger
 from reframe.utility.osext import run_command
 import reframe.utility.osext as osext
 import reframe.utility.sanity as sn
+from datetime import datetime as dt
+
 SYSFILE = 'systems/sysinfo.json' # interpreted relative to jupyter root
 
 def get_jupyter_root():
