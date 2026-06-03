@@ -449,8 +449,10 @@ class STARSTest(ContainerTest):
         self.data_dir = os.path.join(self.stagedir, f"{self.bench_name}_Data")
         os.makedirs(self.data_dir, exist_ok=True)
 
-        self.container_name = self.container_url.rsplit("/", 1)[-1]
+        self.container_name =self.container_url.rsplit("/", 1)[-1]
         self.container_path = os.path.join(code_dir, f"singularity_images/{container_name}.sif")
+        self.bench_name=f"STARS_{self.stars_name}"
+
 
     @run_after('setup')
     def download_code(self):
