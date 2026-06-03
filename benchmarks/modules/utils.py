@@ -489,8 +489,6 @@ class STARSTest(ContainerTest):
             "--no-home",
             "--pwd",
             "/data",
-            "--env",
-            "DATA=big",
             "--bind",
             f"{self.outputdir}:/output",
             "--bind",
