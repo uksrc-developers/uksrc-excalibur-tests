@@ -446,9 +446,9 @@ class STARSTest(ContainerTest):
 
     @run_after('setup')
     def copy_dirs_stage(self):
-        self.code_dir = os.path.join(self.stagedir, f"{bench_name}_Code")
+        self.code_dir = os.path.join(self.stagedir, f"{self.bench_name}_Code")
         os.makedirs(self.code_dir, exist_ok=True)
-        self.data_dir = os.path.join(self.stagedir, f"{bench_name}_Data")
+        self.data_dir = os.path.join(self.stagedir, f"{self.bench_name}_Data")
         os.makedirs(self.data_dir, exist_ok=True)
 
     @run_after('setup')
