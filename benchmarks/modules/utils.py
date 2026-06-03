@@ -433,7 +433,7 @@ class STARSTest(ContainerTest):
 
     tasks = parameter([1])
     num_tasks_per_node = 1
-    cpus_per_task = parameter([1])
+    cpus_per_task = parameter([2]) # Setting this to 1 causes errors in one of the sequences in ContainerTest - need to investigate
 
     executable = "singularity"
 
