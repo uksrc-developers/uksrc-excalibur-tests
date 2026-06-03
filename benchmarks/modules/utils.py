@@ -450,7 +450,7 @@ class STARSTest(ContainerTest):
         os.makedirs(self.data_dir, exist_ok=True)
 
         self.container_name =self.container_url.rsplit("/", 1)[-1]
-        self.container_path = os.path.join(code_dir, f"singularity_images/{container_name}.sif")
+        self.container_path = os.path.join(self.code_dir, f"singularity_images/{self.container_name}.sif")
         self.bench_name=f"STARS_{self.stars_name}"
 
 
