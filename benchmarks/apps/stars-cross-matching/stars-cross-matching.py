@@ -13,6 +13,10 @@ class STARScrossmatch(STARSTest):
     stars_name="crossmatching"
     container_url = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/cross-matching"
 
+    tasks = parameter([1])
+    num_tasks_per_node = 1
+    cpus_per_task = parameter([1]) 
+
     @sanity_function
     def validate(self):
         test_fits = fits.open(os.path.join(self.data_dir, "crossmatch_cat.fits"))

@@ -431,10 +431,6 @@ class STARSTest(ContainerTest):
     code_dir = ""
     data_dir = ""
 
-    tasks = parameter([1])
-    num_tasks_per_node = 1
-    cpus_per_task = parameter([2]) # Setting this to 1 causes errors in one of the sequences in ContainerTest - need to investigate
-
     executable = "singularity"
 
     output_dict_list = []
