@@ -349,7 +349,7 @@ class ContainerTest(rfm.RegressionTest, special=True):
                     "mkdir ${LIK_OUTPUT_DIR}",
                     "export LIK_OUTPUT=${LIK_OUTPUT_DIR}/likwid_performance_out.txt",
                     f"export CPU_PER_TASK={self.num_cpus_per_task}",
-                    "export THREAD_COUNT=$(($(lscpu | awk '/Thread\(s\) per core:/ {print $4}') * CPU_PER_TASK))",
+                    "export THREAD_COUNT=$(($(lscpu | awk '/Thread\\(s\\) per core:/ {print $4}') * CPU_PER_TASK))",
                     "export STREAM_SIZE=$((10 * THREAD_COUNT))kB",
                     "echo 'Scalar MFlops/s' > ${LIK_OUTPUT}",
                     "likwid-bench -t peakflops -W N:${STREAM_SIZE}:${THREAD_COUNT} | grep 'MFlops/s:' >> ${LIK_OUTPUT}",
