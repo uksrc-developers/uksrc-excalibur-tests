@@ -5,6 +5,7 @@ import subprocess
 import json
 import sys
 import pprint
+import pathlib
 
 import reframe as rfm
 from numpy.f2py.auxfuncs import throw_error
