@@ -430,7 +430,7 @@ class STARSTest(ContainerTest):
 
     tasks = parameter([1])
     num_tasks_per_node = 1
-    cpus_per_task = parameter([16])
+    cpus_per_task = parameter([1])
 
     executable = "singularity"
 
