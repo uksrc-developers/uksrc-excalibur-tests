@@ -462,7 +462,7 @@ class STARSTest(ContainerTest):
                 f"singularity pull {self.container_url}",
                 shell=True)
             subprocess.run(f"mv {self.container_name}_latest.sif {self.container_path}", shell=True)
-        for a in dataset:
+        for a in self.dataset:
            if not os.path.isfile(os.path.join(self.data_dir, a['filename'])):
               subprocess.run(f"wget -nc {a['url']} -O {os.path.join(self.data_dir, a['filename'])}", shell=True)
 
