@@ -436,8 +436,6 @@ class STARSTest(ContainerTest):
 
     output_dict_list = []
     container_url = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/generic"
-    container_name = container_url.rsplit("/", 1)[-1]
-    container_path = os.path.join(code_dir, f"singularity_images/{container_name}.sif")
     execute_script = "/scripts/run-task.sh"
     # dataset is a list of dicts with "filename" and "url" fields
     dataset = []
@@ -450,6 +448,9 @@ class STARSTest(ContainerTest):
         os.makedirs(self.code_dir, exist_ok=True)
         self.data_dir = os.path.join(self.stagedir, f"{self.bench_name}_Data")
         os.makedirs(self.data_dir, exist_ok=True)
+
+        self.container_name = self.container_url.rsplit("/", 1)[-1]
+        self.container_path = os.path.join(code_dir, f"singularity_images/{container_name}.sif")
 
     @run_after('setup')
     def download_code(self):
