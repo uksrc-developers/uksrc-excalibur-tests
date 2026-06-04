@@ -22,7 +22,7 @@ class STARSimageconvolution(STARSTest):
     images = "P007+39.fits"
 
     dataset=[{"url":f"https://lofar-surveys.org/public/DR2/mosaics/P007+39/mosaic-blanked.fits", "filename":f"P007+39..fits"}]
-
+    env = 'DATA=1image'
 
     @sanity_function
     def validate(self):
