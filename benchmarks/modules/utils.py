@@ -483,7 +483,7 @@ class STARSTest(ContainerTest):
             f"touch {self.stagedir}/rfm_build.err",
             f"touch {self.stagedir}/rfm_build.sh",
             f"echo '#!/bin/bash' >> {self.outputdir}/ssh_job.sh",
-            f"ecgo 'set -e' >> {self.outputdir}/ssh_job.sh",
+            f"echo 'set -e' >> {self.outputdir}/ssh_job.sh",
             f"echo 'export OMP_NUM_THREADS={self.cpus_per_task}' >> {self.outputdir}/ssh_job.sh",
             f"echo '{self.execute_script}' >> {self.outputdir}/ssh_job.sh",
             f"echo \"Workflow start: $(date '+%Y-%m-%d %H:%M:%S')\" > {self.outputdir}/output.log"
