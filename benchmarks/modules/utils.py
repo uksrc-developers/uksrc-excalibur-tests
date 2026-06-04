@@ -472,6 +472,9 @@ class STARSTest(ContainerTest):
         for a in self.dataset:
            if not os.path.isfile(os.path.join(self.data_dir, a['filename'])):
               subprocess.run(f"wget -nc {a['url']} -O {os.path.join(self.data_dir, a['filename'])}", shell=True)
+           if "decompress" in a.keys():
+              if a["decompress"] == "bzip2":
+                 subprocess.run(f"bzip2 -dk {os.path.join(self.data_dir, a['filename'])}", shell=True)
 
     @run_before('run')
     def add_prerun_cmds(self):
