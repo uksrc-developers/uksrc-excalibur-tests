@@ -8,7 +8,7 @@ from benchmarks.modules.utils import STARSTest
 from astropy.io import fits
 
 @rfm.simple_test
-class STARScrossmatch(STARSTest):
+class STARSpulsarsearchpresto(STARSTest):
     stars_name="pulsarsearchpresto"
     container_url = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/pulsar-search-presto"
     cpus_per_task = parameter([16])
@@ -19,5 +19,5 @@ class STARScrossmatch(STARSTest):
 
     @sanity_function
     def validate(self):
-        return True
+        return os.path.isfile(os.path.join(self.data_dir,"figures/1221832280_DM16.10_ACCEL_50_ACCEL_Cand_4.pfd.png"))
 

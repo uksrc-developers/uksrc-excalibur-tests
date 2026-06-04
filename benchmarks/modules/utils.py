@@ -443,6 +443,7 @@ class STARSTest(ContainerTest):
     # dataset is a list of dicts with "filename" and "url" fields
     dataset = []
     env = 'DUMMY_VAR=123'
+    data_directories = []
 
 
 
@@ -469,9 +470,14 @@ class STARSTest(ContainerTest):
                 f"singularity pull {self.container_url}",
                 shell=True)
             subprocess.run(f"mv {self.container_name}_latest.sif {self.container_path}", shell=True)
+        for a in self.data_directories:
+            subprocess.run(f"mkdir -p {(os.path.join(self.data_dir, a))}", shell=True)
         for a in self.dataset:
            if not os.path.isfile(os.path.join(self.data_dir, a['filename'])):
               subprocess.run(f"wget -nc {a['url']} -O {os.path.join(self.data_dir, a['filename'])}", shell=True)
+           if "decompress" in a.keys():
+              if a["decompress"] == "bzip2":
+                 subprocess.run(f"bzip2 -dk {os.path.join(self.data_dir, a['filename'])}", shell=True)
 
     @run_before('run')
     def add_prerun_cmds(self):
@@ -480,6 +486,7 @@ class STARSTest(ContainerTest):
             f"touch {self.stagedir}/rfm_build.err",
             f"touch {self.stagedir}/rfm_build.sh",
             f"echo '#!/bin/bash' >> {self.outputdir}/ssh_job.sh",
+            f"echo 'set -e' >> {self.outputdir}/ssh_job.sh",
             f"echo 'export OMP_NUM_THREADS={self.cpus_per_task}' >> {self.outputdir}/ssh_job.sh",
             f"echo '{self.execute_script}' >> {self.outputdir}/ssh_job.sh",
             f"echo \"Workflow start: $(date '+%Y-%m-%d %H:%M:%S')\" > {self.outputdir}/output.log"
