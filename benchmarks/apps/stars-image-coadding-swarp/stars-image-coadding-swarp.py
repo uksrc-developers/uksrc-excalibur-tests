@@ -24,5 +24,5 @@ class STARSimagecoaddingswarp(STARSTest):
     @sanity_function
     def validate(self):
         test_fits = fits.open(os.path.join(self.data_dir, "coadd.fits"))
-        return test_fits[1].data.shape[0] > 0
+        return test_fits[0].data.shape[0] > 0
 
