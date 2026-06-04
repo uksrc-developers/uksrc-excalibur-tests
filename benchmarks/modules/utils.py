@@ -443,6 +443,7 @@ class STARSTest(ContainerTest):
     # dataset is a list of dicts with "filename" and "url" fields
     dataset = []
     env = 'DUMMY_VAR=123'
+    data_directories = []
 
 
 
@@ -469,6 +470,8 @@ class STARSTest(ContainerTest):
                 f"singularity pull {self.container_url}",
                 shell=True)
             subprocess.run(f"mv {self.container_name}_latest.sif {self.container_path}", shell=True)
+        for a in self.data_directories:
+            subprocess.run(f"mkdir -p {(os.path.join(self.data_dir, a))}", shell=True)
         for a in self.dataset:
            if not os.path.isfile(os.path.join(self.data_dir, a['filename'])):
               subprocess.run(f"wget -nc {a['url']} -O {os.path.join(self.data_dir, a['filename'])}", shell=True)
