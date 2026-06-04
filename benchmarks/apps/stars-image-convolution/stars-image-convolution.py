@@ -21,12 +21,11 @@ class STARSimageconvolution(STARSTest):
 
     images = "P007+39.fits"
 
-    dataset=[{"url":f"https://lofar-surveys.org/public/DR2/mosaics/P007+39/mosaic-blanked.fits", "filename":f"P007+39..fits"}]
+    dataset=[{"url":f"https://lofar-surveys.org/public/DR2/mosaics/P007+39/mosaic-blanked.fits", "filename":f"P007+39.fits"}]
     env = 'DATA=1image'
 
     @sanity_function
     def validate(self):
-        #test_fits = fits.open(os.path.join(self.data_dir, "coadd.fits"))
-        #return test_fits[0].data.shape[0] > 0
-        return True
+        test_fits = fits.open(os.path.join(self.data_dir, "output/conv_P007+39.fits"))
+        return test_fits[0].data.shape[0] > 0
 
