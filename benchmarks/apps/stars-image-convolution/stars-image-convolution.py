@@ -23,7 +23,7 @@ class STARSimageconvolution(STARSTest):
     data_directories = ["LOTSS-DR2-100images/"]
 
     for a in images:
-       dataset.append({"url":f"{data_base_url}/{a}/{data_base_filename}", "filename":f"/data/LOTSS-DR2-100images/{a}.fits"})
+       dataset.append({"url":f"{data_base_url}/{a}/{data_base_filename}", "filename":f"LOTSS-DR2-100images/{a}.fits"})
 
 
     @sanity_function
