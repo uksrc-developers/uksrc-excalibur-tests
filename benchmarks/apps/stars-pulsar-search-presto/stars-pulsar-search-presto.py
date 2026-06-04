@@ -8,7 +8,7 @@ from benchmarks.modules.utils import STARSTest
 from astropy.io import fits
 
 @rfm.simple_test
-class STARScrossmatch(STARSTest):
+class STARSpulsarsearchpresto(STARSTest):
     stars_name="pulsarsearchpresto"
     container_url = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/pulsar-search-presto"
     cpus_per_task = parameter([16])
