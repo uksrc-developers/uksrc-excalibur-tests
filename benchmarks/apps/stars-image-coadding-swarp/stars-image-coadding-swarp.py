@@ -10,7 +10,7 @@ from astropy.io import fits
 @rfm.simple_test
 class STARSimagecoaddingswarp(STARSTest):
     stars_name="imagecoaddingswarp"
-    container_url = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/pulsar-search-presto"
+    container_url = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/image-coadding-swarp"
     cpus_per_task = parameter([16])
 
     # dataset is a list of dicts with "filename" and "url" fields
