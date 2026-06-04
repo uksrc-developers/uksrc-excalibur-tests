@@ -11,7 +11,7 @@ from astropy.io import fits
 class STARSimagecoaddingswarp(STARSTest):
     stars_name="imagecoaddingswarp"
     container_url = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/image-coadding-swarp"
-    cpus_per_task = parameter([16])
+    cpus_per_task = parameter([1])
 
     # dataset is a list of dicts with "filename" and "url" fields
     dataset = [{"filename":"frame-r-006174-2-0094.fits.bz2", "url":"http://dr17.sdss.org/sas/dr17/eboss/photoObj/frames/301/6174/2/frame-r-006174-2-0094.fits.bz2", "decompress":"bzip2"},
@@ -23,5 +23,6 @@ class STARSimagecoaddingswarp(STARSTest):
 
     @sanity_function
     def validate(self):
-        return True
+        test_fits = fits.open(os.path.join(self.data_dir, "coadd.fits"))
+        return test_fits[1].data.shape[0] > 0
 
