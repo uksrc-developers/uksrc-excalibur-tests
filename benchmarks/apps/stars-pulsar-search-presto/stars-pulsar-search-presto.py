@@ -19,5 +19,5 @@ class STARSpulsarsearchpresto(STARSTest):
 
     @sanity_function
     def validate(self):
-        return True
+        return os.path.isfile(os.path.join(self.data_dir,"figures/1221832280_DM48.82_ACCEL_50_ACCEL_Cand_2.pfd.png"))
 
