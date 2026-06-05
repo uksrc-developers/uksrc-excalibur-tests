@@ -445,6 +445,7 @@ class STARSTest(ContainerTest):
     env = 'DUMMY_VAR=123'
     data_directories = []
 
+    data_mode = None
 
 
     @run_after('setup')
@@ -470,14 +471,20 @@ class STARSTest(ContainerTest):
                 f"singularity pull {self.container_url}",
                 shell=True)
             subprocess.run(f"mv {self.container_name}_latest.sif {self.container_path}", shell=True)
-        for a in self.data_directories:
-            subprocess.run(f"mkdir -p {(os.path.join(self.data_dir, a))}", shell=True)
-        for a in self.dataset:
-           if not os.path.isfile(os.path.join(self.data_dir, a['filename'])):
-              subprocess.run(f"wget -nc {a['url']} -O {os.path.join(self.data_dir, a['filename'])}", shell=True)
-           if "decompress" in a.keys():
-              if a["decompress"] == "bzip2":
-                 subprocess.run(f"bzip2 -dk {os.path.join(self.data_dir, a['filename'])}", shell=True)
+        if self.data_mode == None:
+            for a in self.data_directories:
+                subprocess.run(f"mkdir -p {(os.path.join(self.data_dir, a))}", shell=True)
+            for a in self.dataset:
+                if not os.path.isfile(os.path.join(self.data_dir, a['filename'])):
+                   subprocess.run(f"wget -nc {a['url']} -O {os.path.join(self.data_dir, a['filename'])}", shell=True)
+                if "decompress" in a.keys():
+                    if a["decompress"] == "bzip2":
+                         subprocess.run(f"bzip2 -dfk {os.path.join(self.data_dir, a['filename'])}", shell=True)
+                    elif a["decompress"] == "gzip":
+                         subprocess.run(f"gzip -dfk {os.path.join(self.data_dir, a['filename'])}", shell=True)
+        else:
+            # At this point the contents of data_mode should be the path to a bash script to download the data.
+            subprocess.run(f"{executable} exec --no-home --pwd /data --env {self.env} --bind {self.outputdir}:/output --bind {self.data_dir}:/data {self.container_path}   /bin/bash {data_mode}", shell=True)
 
     @run_before('run')
     def add_prerun_cmds(self):
