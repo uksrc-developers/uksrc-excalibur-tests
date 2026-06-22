@@ -6,6 +6,7 @@ import json
 import sys
 import pprint
 import pathlib
+from warnings import warn
 
 import reframe as rfm
 from numpy.f2py.auxfuncs import throw_error
@@ -296,7 +297,8 @@ class ContainerTest(rfm.RegressionTest, special=True):
 
     @run_before('compile')
     def add_profiler(self):
-        if hasattr(self, 'profiler'):
+        if hasattr(self, 'profiler') and self.profiler != "":
+            print(f"profiler: {self.profiler}")
             # Command to use to view profiling traces
             viewer_cmd = None
             # Arguments to pass to the viewer
@@ -355,12 +357,12 @@ class ContainerTest(rfm.RegressionTest, special=True):
                     "likwid-bench -t peakflops -W N:${STREAM_SIZE}:${THREAD_COUNT} | grep 'MFlops/s:' >> ${LIK_OUTPUT}",
                     "echo 'Scalar MByte/s' >> ${LIK_OUTPUT}",
                     "likwid-bench -t load -W N:8GB:${THREAD_COUNT} | grep 'MByte/s:' >> ${LIK_OUTPUT}",
-                    'python -c "import pyprofqueue.profilers.likwid as lik; lik.create_custom_group();"',
+                    f'{os.path.dirname(sys.executable)}/python -c "import pyprofqueue.profilers.likwid as lik; lik.create_custom_group();"',
                     "export ARCHITECTURE=$(likwid-perfctr -i | awk '/CPU short:/ {print $NF}')",
                     "mkdir -p $HOME/.likwid/groups/$ARCHITECTURE",
-                    "cp ./CUSTOM_GROUP.txt $HOME/.likwid/groups/$ARCHITECTURE/CUSTOM_GROUP.txt"
+                    "cp ./PYPROFQUEUE.txt $HOME/.likwid/groups/$ARCHITECTURE/PYPROFQUEUE.txt"
                 ]
-                self.executable = f'likwid-perfctr -g CUSTOM_GROUP -t 120s -O -f ' + self.executable + " 2> ${LIK_OUTPUT_DIR}/temp_likwid.txt > ${LIK_OUTPUT_DIR}/temp_out.txt"
+                self.executable = f'likwid-perfctr -g PYPROFQUEUE -t 120s -O -f ' + self.executable + " 2> ${LIK_OUTPUT_DIR}/temp_likwid.txt > ${LIK_OUTPUT_DIR}/temp_out.txt"
                 self.postrun_cmds += [
                     "sed -n '/^# HWThreads:/,+1p' ${LIK_OUTPUT_DIR}/temp_out.txt > ${LIK_OUTPUT_DIR}/likwid_output.txt",
                     "sed '/^$/Q' ${LIK_OUTPUT_DIR}/temp_likwid.txt >> ${LIK_OUTPUT_DIR}/likwid_output.txt",
@@ -370,7 +372,7 @@ class ContainerTest(rfm.RegressionTest, special=True):
                 # viewer_cmd = '<>'
                 # viewer_args = f'{self.outputdir}/{output_path}*'
             else:
-                raise CommandLineError(f'Unknown profiler {self.profiler}')
+                warn(f'Unknown profiler {self.profiler}')
 
             # Hack time! On ARCHER2 the home partition isn't mounted on compute
             # nodes, but due to a longstanding upstream bug

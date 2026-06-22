@@ -2,6 +2,7 @@ import itertools
 import json
 import os, sys, pathlib, logging
 import time
+import secrets
 
 import reframe.core.launchers.mpi as rfmmpi
 from pathlib import Path
@@ -161,6 +162,10 @@ class KubernetesJobScheduler(JobScheduler):
 
     container_scheduler = True
 
+    _MAX_NAME_LEN = 63
+    _SUFFIX_LEN = 6  # hex chars
+    _BASE_NAME_LEN = _MAX_NAME_LEN - _SUFFIX_LEN - 1
+
     @staticmethod
     def _namespace_from_options(job):
         for opt in (*job.sched_access, *job.options, *job.cli_options):
@@ -182,7 +187,7 @@ class KubernetesJobScheduler(JobScheduler):
         container = {
             'name': job_name,
             'image': job.container_image,
-            'command': ['/bin/bash', '-c', job.container_cmd],
+            'command': ["/bin/sh", "-c", job.container_cmd],
         }
 
         pull_policy = self._pull_policy_from_options(job)
@@ -228,11 +233,14 @@ class KubernetesJobScheduler(JobScheduler):
         raise NotImplementedError('k8s scheduler does not support node filtering')
 
     def submit(self, job):
+        open(os.path.join(job.outputdir.replace('/output/', '/stage/'), job.stdout), 'w').close()
+        open(os.path.join(job.outputdir.replace('/output/', '/stage/'), job.stderr), 'w').close()
         if yaml is None:
             raise JobSchedulerError('PyYAML is required for the k8s scheduler')
 
         job._namespace = self._namespace_from_options(job)
-        job._pod_name = job.name.lower()[:60]
+        base_name = job.name.lower()[:self._BASE_NAME_LEN].replace("_", "-")
+        job._pod_name = self._unique_pod_name(base_name, job._namespace)
 
         manifest = self._build_manifest(job)
         manifest_path = os.path.join(job.workdir, f'{job.name}_manifest.yaml')
@@ -266,8 +274,8 @@ class KubernetesJobScheduler(JobScheduler):
     def finished(self, job):
         if job._state != 'COMPLETED':
             return False
-        stdout = os.path.join(job.workdir, job.stdout)
-        stderr = os.path.join(job.workdir, job.stderr)
+        stdout = os.path.join(job.outputdir, job.stdout)
+        stderr = os.path.join(job.outputdir, job.stderr)
         return os.path.exists(stdout) and os.path.exists(stderr)
 
     def poll(self, *jobs):
@@ -281,9 +289,12 @@ class KubernetesJobScheduler(JobScheduler):
         )
 
         if completed.returncode != 0:
-            job._state = 'COMPLETED'
-            if not self.finished(job):
+            if 'not found' in completed.stderr.lower():
+                job._state = 'COMPLETED'
+                job._exitcode = 1
                 self._retrieve_logs(job)
+            else:
+                self.log(f'kubectl get job returned error for {job._pod_name}: {completed.stderr.strip()}')
             return
 
         try:
@@ -312,6 +323,61 @@ class KubernetesJobScheduler(JobScheduler):
                 and time.time() - job.submit_time >= job.max_pending_time):
             self.cancel(job)
             job._exception = JobError('maximum pending time exceeded', job.jobid)
+
+    @staticmethod
+    def _job_status(name, namespace):
+        '''Return the current status of a k8s job by name.
+
+        Returns one of 'complete', 'failed', 'active' (covers Running/
+        Pending), or None if the job does not exist.
+        '''
+        completed = osext.run_command(
+            f'kubectl get job {name} -n {namespace} -o json'
+        )
+        if completed.returncode != 0:
+            return None
+
+        try:
+            status = json.loads(completed.stdout).get('status', {})
+        except json.JSONDecodeError:
+            return None
+
+        for cond in status.get('conditions', []):
+            if cond.get('status') != 'True':
+                continue
+            if cond.get('type') == 'Complete':
+                return 'complete'
+            if cond.get('type') == 'Failed':
+                return 'failed'
+
+        return 'active'
+
+    def _unique_pod_name(self, base_name, namespace):
+        '''Resolve a usable, collision-free pod name for a new job.
+
+        If a job with the candidate name exists but is in a terminal
+        state (Complete/Failed), it is deleted and the name is reused.
+        If it exists and is still active (Running/Pending), a new name
+        with a random suffix is generated instead.
+        '''
+        candidate = base_name
+        while True:
+            status = self._job_status(candidate, namespace)
+
+            if status is None:
+                return candidate
+
+            if status in ('complete', 'failed'):
+                osext.run_command(
+                    f'kubectl delete job {candidate} -n {namespace} '
+                    f'--ignore-not-found',
+                    check=True,
+                )
+                return candidate
+
+            # status == 'active': name is taken by a running/pending job
+            suffix = secrets.token_hex(self._SUFFIX_LEN // 2)
+            candidate = f'{base_name[:self._BASE_NAME_LEN]}-{suffix}'
 
     def _retrieve_logs(self, job):
         completed = osext.run_command(
@@ -1147,16 +1213,17 @@ site_configuration = {
             'name': 'kind',
             'descr': 'Local Kubernetes (kind) cluster',
             'hostnames': ['.*'],
+            'max_local_jobs': 1,
 #            'prefix': stage_prefix,
             'partitions': [
                 {
                     'name': 'default',
                     'scheduler': 'k8s',
                     'launcher': 'local',
-                    'access': [
-                        '--image=spsrc26.iaa.csic.es/srcnet-benchmarks/uksrc_excalibur_tests_base:latest',
-                        '--pull-policy=Never',
-                    ],
+#                    'access': [
+#                        '--image=spsrc26.iaa.csic.es/srcnet-benchmarks/uksrc_excalibur_tests_base:latest',
+#                        '--pull-policy=Never',
+#                    ],
                     'environs': ['default'],
                 },
             ]
