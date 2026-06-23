@@ -187,7 +187,7 @@ class KubernetesJobScheduler(JobScheduler):
         container = {
             'name': job_name,
             'image': job.container_image,
-            'command': ["/bin/sh", "-c", job.container_cmd],
+            'command': ["bash", "-c", job.container_cmd],
         }
 
         pull_policy = self._pull_policy_from_options(job)

@@ -268,7 +268,7 @@ class ContainerTest(rfm.RegressionTest, special=True):
     #: The container image to use when submitting to a container scheduler.
     container_image = variable(
         str,
-        value='spsrc26.iaa.csic.es/srcnet-benchmarks/uksrc_excalibur_tests_base:0.1.2',
+        value='spsrc26.iaa.csic.es/srcnet-benchmarks/uksrc_excalibur_tests_base:latest',
         loggable=True,
     )
 
