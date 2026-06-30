@@ -278,6 +278,7 @@ class ContainerTest(rfm.RegressionTest, special=True):
     #: current test via ReFrame inside the container.
     container_cmd = variable(str, value="", loggable=True)
     env_variables = variable(dict, value={}, loggable=True)
+    in_container = variable(bool, value=False, loggable=True)
 
     def __init__(self):
         self._is_container_job = False
@@ -288,12 +289,15 @@ class ContainerTest(rfm.RegressionTest, special=True):
             if self.container_cmd == "":
                 import inspect
                 path = inspect.getfile(type(self))
-                self.container_cmd = f'reframe --system=default -c /opt/uksrc-excalibur-tests/{path[path.find("benchmarks/apps"):]} -n {self.name[:self.name.find(" ")]} -r && cat {self.output_file}'
+                self.container_cmd = f'reframe --system=default -c /opt/uksrc-excalibur-tests/{path[path.find("benchmarks/apps"):]} -n {type(self).__name__} -S {type(self).__name__}.incontainer=True -r'
             self._is_container_job = True
             self.job.container_image = self.container_image
             self.job.container_cmd = self.container_cmd
             self.job.env_variables = self.env_variables
             self.job.outputdir = self.outputdir
+            open(os.path.join(self.stagedir, "rfm_build.sh"), 'w').close()
+            open(os.path.join(self.stagedir, "rfm_build.out"), 'w').close()
+            open(os.path.join(self.stagedir, "rfm_build.err"), 'w').close()
 
     @run_before('compile')
     def add_profiler(self):
@@ -398,12 +402,17 @@ class ContainerTest(rfm.RegressionTest, special=True):
         echo "    $(which {viewer_cmd}) {viewer_args}"
     fi''')
 
-
     @run_before('run')
     def _create_output_file(self):
         if getattr(self.current_partition.scheduler, 'container_scheduler', False):
             open(os.path.join(self.outputdir, "rfm_job.out"), 'w').close()
             open(os.path.join(self.outputdir, "rfm_job.err"), 'w').close()
+
+    @run_after('run')
+    def _create_output_file(self):
+        if self.in_container:
+            subprocess.run(f"cat {os.path.join(self.outputdir, 'rfm_job.out')}",shell=True)
+            subprocess.run(f"cat {os.path.join(self.outputdir, 'rfm_job.err')}",shell=True)
 
 
     def compile(self):
@@ -490,7 +499,7 @@ class STARSTest(ContainerTest):
 
     @run_before('run')
     def add_prerun_cmds(self):
-        self.prerun_cmds = [
+        self.prerun_cmds += [
             f"touch {self.stagedir}/rfm_build.out",
             f"touch {self.stagedir}/rfm_build.err",
             f"touch {self.stagedir}/rfm_build.sh",
@@ -500,7 +509,7 @@ class STARSTest(ContainerTest):
             f"echo '{self.execute_script}' >> {self.outputdir}/ssh_job.sh",
             f"echo \"Workflow start: $(date '+%Y-%m-%d %H:%M:%S')\" > {self.outputdir}/output.log"
         ]
-        self.postrun_cmds = [
+        self.postrun_cmds = +[
             f"echo \"Workflow end: $(date '+%Y-%m-%d %H:%M:%S')\" >> {self.outputdir}/output.log"
         ]
 
@@ -578,8 +587,6 @@ class SpackTest(ContainerTest): #(rfm.RegressionTest):
             print(result_dict)'
         if getattr(self.current_partition.scheduler, 'container_scheduler', False):
             self.pre_container_stage = f'{self.stagedir}/rfm_job.out'
-            subprocess.run(f'echo "spack_spec_dict: $(spack -e {os.path.join(dest, subdir)} python -c \'{cmd_spack_spec_dict}\')" >> {self.stagedir}/rfm_job.out', shell=True)
-            self.postrun_cmds.append(f'cat {self.stagedir}/rfm_job.out')
             return
         self.build_system.environment = os.path.join(dest, subdir)
         # Base name and full path of common settings file.
@@ -600,6 +607,8 @@ class SpackTest(ContainerTest): #(rfm.RegressionTest):
         ]
 
         self.postrun_cmds.append(f'echo "spack_spec_dict: $(spack -e {self.build_system.environment} python -c \'{cmd_spack_spec_dict}\')" >> {self.stagedir}/rfm_job.out')
+        self.postrun_cmds.append(f'echo "spack_spec_dict: $(spack -e {self.build_system.environment} python -c \'{cmd_spack_spec_dict}\')" >> {self.stdout}')
+        self.postrun_cmds.append(f'cat {self.stagedir}/rfm_job.out')
 
         # Keep the `spack.lock` file in the output directory so that the Spack
         # environment can be faithfully reproduced later.
@@ -607,10 +616,14 @@ class SpackTest(ContainerTest): #(rfm.RegressionTest):
 
     @run_after('run')
     def get_full_variants(self):
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            self.spack_spec_dict = "spack_spec_dict: "
+            return
         with osext.change_dir(self.stagedir):
             self.spack_spec_dict = sn.extractsingle(r'spack_spec_dict: \s*(.*)', self.stdout, 1).evaluate()
             # convert all single quotes to double quotes since JSON does not recognise it
             self.spack_spec_dict = self.spack_spec_dict.replace("'", "\"")
+            return
 
     @run_before('compile')
     def setup_build_system(self):

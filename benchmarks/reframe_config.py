@@ -393,7 +393,7 @@ class KubernetesJobScheduler(JobScheduler):
             return
 
         logs = osext.run_command(
-            f'kubectl logs {pod_name} -n {job._namespace}'
+            f'kubectl logs {job._pod_name}'
         )
 
         with open(os.path.join(job.outputdir, job.stdout), 'w') as f:

@@ -43,12 +43,6 @@ class FftBenmchmarkBase(SpackTest):
     output_file = "default.txt"
 
     @run_before('setup')
-    def set_container_cmd(self):
-        import inspect
-        path = inspect.getfile(type(self))
-        self.container_cmd = f'reframe --system=default -c {self.container_path}/{path[path.find("benchmarks/apps"):]} -n {type(self).__name__} -S {type(self).__name__}.transform_count={self.transform_count} -S {type(self).__name__}.repeat_count={self.repeat_count} -r'
-
-    @run_before('setup')
     def setup_variables(self):
         self.num_tasks = self.tasks
         self.num_cpus_per_task = self.cpus_per_task
@@ -61,8 +55,16 @@ class FftBenmchmarkBase(SpackTest):
         # ReFrame built-in `env_vars` variable.
         self.env_vars['OMP_NUM_THREADS'] = f'{self.num_cpus_per_task}'
 
+    @run_before('compile')
+    def set_container_cmd(self):
+        import inspect
+        path = inspect.getfile(type(self))
+        self.container_cmd = f'reframe --system=default -c {self.container_path}/{path[path.find("benchmarks/apps"):]} -n {type(self).__name__} --S {type(self).__name__}.incontainer=True -S {type(self).__name__}.transform_count={self.transform_count} -S {type(self).__name__}.repeat_count={self.repeat_count} -r && cat {self.outputdir}/{self.output_file}'
+
     @sanity_function
     def validate(self):
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            return True
         return sn.assert_true(os.path.isfile(self.outputdir + '/' + self.output_file))
 
     @run_before("performance")
@@ -74,6 +76,8 @@ class FftBenmchmarkBase(SpackTest):
         - SystemPartition [str]
         - <Desired Output variables> [Format Determinable]
         """
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            return
         pattern = r'(?P<Library>\S+), (?P<Mem_Size>\S+), (?P<ExecutionTime>\S+),'
         output_list = sn.extractall(pattern,
                                     pathlib.Path(self.outputdir) / self.output_file,
