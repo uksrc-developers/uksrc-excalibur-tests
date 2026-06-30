@@ -409,10 +409,10 @@ class ContainerTest(rfm.RegressionTest, special=True):
             open(os.path.join(self.outputdir, "rfm_job.err"), 'w').close()
 
     @run_after('run')
-    def _create_output_file(self):
+    def _print_output_file(self):
         if self.in_container:
-            subprocess.run(f"cat {os.path.join(self.outputdir, 'rfm_job.out')}",shell=True)
-            subprocess.run(f"cat {os.path.join(self.outputdir, 'rfm_job.err')}",shell=True)
+            subprocess.run(f"cat {os.path.join(self.outputdir, 'rfm_job.out')}", shell=True)
+            subprocess.run(f"cat {os.path.join(self.outputdir, 'rfm_job.err')}", shell=True)
 
 
     def compile(self):

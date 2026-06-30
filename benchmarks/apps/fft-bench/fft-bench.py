@@ -59,7 +59,7 @@ class FftBenmchmarkBase(SpackTest):
     def set_container_cmd(self):
         import inspect
         path = inspect.getfile(type(self))
-        self.container_cmd = f'reframe --system=default -c {self.container_path}/{path[path.find("benchmarks/apps"):]} -n {type(self).__name__} --S {type(self).__name__}.incontainer=True -S {type(self).__name__}.transform_count={self.transform_count} -S {type(self).__name__}.repeat_count={self.repeat_count} -r && cat {self.outputdir}/{self.output_file}'
+        self.container_cmd = f'reframe --system=default -c {self.container_path}/{path[path.find("benchmarks/apps"):]} -n {type(self).__name__} -S {type(self).__name__}.in_container=True -S {type(self).__name__}.transform_count={self.transform_count} -S {type(self).__name__}.repeat_count={self.repeat_count} -r'
 
     @sanity_function
     def validate(self):
