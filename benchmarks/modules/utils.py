@@ -289,7 +289,7 @@ class ContainerTest(rfm.RegressionTest, special=True):
             if self.container_cmd == "":
                 import inspect
                 path = inspect.getfile(type(self))
-                self.container_cmd = f'reframe --system=default -c /opt/uksrc-excalibur-tests/{path[path.find("benchmarks/apps"):]} -n {type(self).__name__} -S {type(self).__name__}.incontainer=True -r'
+                self.container_cmd = f'reframe --system=default -c /opt/uksrc-excalibur-tests/{path[path.find("benchmarks/apps"):]} -n {type(self).__name__} -S {type(self).__name__}.in_container=True -r'
             self._is_container_job = True
             self.job.container_image = self.container_image
             self.job.container_cmd = self.container_cmd

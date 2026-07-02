@@ -55,7 +55,7 @@ class FftBenmchmarkBase(SpackTest):
         # ReFrame built-in `env_vars` variable.
         self.env_vars['OMP_NUM_THREADS'] = f'{self.num_cpus_per_task}'
 
-    @run_before('compile')
+    @run_before('run')
     def set_container_cmd(self):
         import inspect
         path = inspect.getfile(type(self))
