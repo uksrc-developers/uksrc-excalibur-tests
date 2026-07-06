@@ -278,7 +278,7 @@ class ContainerTest(rfm.RegressionTest, special=True):
     #: current test via ReFrame inside the container.
     container_cmd = variable(str, value="", loggable=True)
     env_variables = variable(dict, value={}, loggable=True)
-    in_container = variable(bool, value=False, loggable=True)
+    use_persistent_storage = variable(bool, value=False, loggable=True)
 
     def __init__(self):
         self._is_container_job = False
@@ -289,11 +289,12 @@ class ContainerTest(rfm.RegressionTest, special=True):
             if self.container_cmd == "":
                 import inspect
                 path = inspect.getfile(type(self))
-                self.container_cmd = f'reframe --system=default -c /opt/uksrc-excalibur-tests/{path[path.find("benchmarks/apps"):]} -n {type(self).__name__} -S {type(self).__name__}.in_container=True -r'
+                self.container_cmd = f'reframe --system=default -c /opt/uksrc-excalibur-tests/{path[path.find("benchmarks/apps"):]} -n {type(self).__name__} -r'
             self._is_container_job = True
             self.job.container_image = self.container_image
             self.job.container_cmd = self.container_cmd
             self.job.env_variables = self.env_variables
+            self.job.use_persistent_storage = self.use_persistent_storage
             self.job.outputdir = self.outputdir
             open(os.path.join(self.stagedir, "rfm_build.sh"), 'w').close()
             open(os.path.join(self.stagedir, "rfm_build.out"), 'w').close()
@@ -407,13 +408,6 @@ class ContainerTest(rfm.RegressionTest, special=True):
         if getattr(self.current_partition.scheduler, 'container_scheduler', False):
             open(os.path.join(self.outputdir, "rfm_job.out"), 'w').close()
             open(os.path.join(self.outputdir, "rfm_job.err"), 'w').close()
-
-    @run_before('performance')
-    def _print_output_file(self):
-        if self.in_container:
-            subprocess.run(f"cat {os.path.join(self.outputdir, 'rfm_job.out')}", shell=True)
-            subprocess.run(f"cat {os.path.join(self.outputdir, 'rfm_job.err')}", shell=True)
-
 
     def compile(self):
         if getattr(self.current_partition.scheduler, 'container_scheduler', False) or self.run_only_test:

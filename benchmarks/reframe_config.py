@@ -210,6 +210,36 @@ class KubernetesJobScheduler(JobScheduler):
             },
         }
 
+        if job.use_persistent_storage:
+            volumes = [
+                {
+                    'name': 'stagedir',
+                    'hostPath': {
+                        'path': job.stagedir,
+                        'type': 'DirectoryOrCreate',
+                    }
+                },
+                {
+                    'name': 'outputdir',
+                    'hostPath': {
+                        'path': job.outputdir,
+                        'type': 'DirectoryOrCreate',
+                    }
+                },
+            ]
+            volume_mounts = [
+                {
+                    'name': 'stagedir',
+                    'mountPath': job.stagedir,
+                },
+                {
+                    'name': 'outputdir',
+                    'mountPath': job.outputdir,
+                },
+            ]
+            container['volumeMounts'] = volume_mounts
+            job_spec['template']['spec']['volumes'] = volumes
+
         if job.time_limit is not None:
             job_spec['activeDeadlineSeconds'] = int(job.time_limit)
 
