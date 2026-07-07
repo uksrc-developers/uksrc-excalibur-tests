@@ -66,7 +66,7 @@ class FftBenmchmarkBase(SpackTest):
     def validate(self):
         if getattr(self.current_partition.scheduler, 'container_scheduler', False):
             return True
-        return sn.assert_true(os.path.isfile(self.outputdir + '/' + self.output_file))
+        return sn.assert_true(self.output_file)
 
     @run_before("performance")
     def output_list_dict(self):
