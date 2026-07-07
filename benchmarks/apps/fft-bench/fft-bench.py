@@ -40,7 +40,7 @@ class FftBenmchmarkBase(SpackTest):
         }
     }
 
-    output_file = os.path.join(outputdir, "default.txt")
+    output_file = "default.txt"
 
     @run_before('setup')
     def setup_variables(self):
