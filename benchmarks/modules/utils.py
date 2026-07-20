@@ -10,7 +10,7 @@ from warnings import warn
 
 import reframe as rfm
 from numpy.f2py.auxfuncs import throw_error
-from reframe.core.builtins import run_before, variable, run_after
+from reframe.core.builtins import run_before, variable, run_after, sanity_function
 from reframe.core.exceptions import BuildSystemError, CommandLineError
 from reframe.core.logging import getlogger
 from reframe.utility.osext import run_command
@@ -265,7 +265,7 @@ class ContainerTest(rfm.RegressionTest, special=True):
             container_cmd = 'bash /opt/run.sh'
     '''
 
-    #: The container image to use when submitting to a container scheduler.
+    # The container image to use when submitting to a container scheduler.
     container_image = variable(
         str,
         value='spsrc26.iaa.csic.es/srcnet-benchmarks/uksrc_excalibur_tests_base:latest',
@@ -274,8 +274,8 @@ class ContainerTest(rfm.RegressionTest, special=True):
 
     # Run only tests need to set this variable to True
     run_only_test = False
-    #: The command to run inside the container. Defaults to running the
-    #: current test via ReFrame inside the container.
+    # The command to run inside the container. Defaults to running the
+    # current test via ReFrame inside the container.
     container_cmd = variable(str, value="", loggable=True)
     env_variables = variable(dict, value={}, loggable=True)
     use_persistent_storage = variable(bool, value=False, loggable=True)
@@ -296,9 +296,9 @@ class ContainerTest(rfm.RegressionTest, special=True):
             self.job.env_variables = self.env_variables
             self.job.use_persistent_storage = self.use_persistent_storage
             self.job.outputdir = self.outputdir
-            open(os.path.join(self.stagedir, "rfm_build.sh"), 'w').close()
-            open(os.path.join(self.stagedir, "rfm_build.out"), 'w').close()
-            open(os.path.join(self.stagedir, "rfm_build.err"), 'w').close()
+        open(os.path.join(self.stagedir, "rfm_build.sh"), 'w').close()
+        open(os.path.join(self.stagedir, "rfm_build.out"), 'w').close()
+        open(os.path.join(self.stagedir, "rfm_build.err"), 'w').close()
 
     @run_before('compile')
     def add_profiler(self):
@@ -424,6 +424,13 @@ class ContainerTest(rfm.RegressionTest, special=True):
             return True
         return super().compile_complete()
 
+    @sanity_function
+    def validate(self):
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            return sn.assert_found(r'\x1b\[32m PASSED \x1b\[0m', os.path.join(self.outputdir, "kubernetes_job.out"))
+        else:
+            return True
+
 # Subclass to make importing STARS benchmarks easier
 class STARSTest(ContainerTest):
     stars_name="generic"
@@ -492,7 +499,7 @@ class STARSTest(ContainerTest):
             subprocess.run(f"{executable} exec --no-home --pwd /data --env {self.env} --bind {self.outputdir}:/output --bind {self.data_dir}:/data {self.container_path}   /bin/bash {data_mode}", shell=True)
 
     @run_before('run')
-    def add_prerun_cmds(self):
+    def add_utils_prerun_cmds(self):
         self.prerun_cmds += [
             f"touch {self.stagedir}/rfm_build.out",
             f"touch {self.stagedir}/rfm_build.err",
@@ -659,7 +666,6 @@ class SpackTest(ContainerTest): #(rfm.RegressionTest):
         # using full partitions may have lower priority.
         if not self.build_locally:
             self.build_job.num_cpus_per_task = min(16, self.current_partition.processor.num_cpus)
-
 
 
 if __name__ == '__main__':

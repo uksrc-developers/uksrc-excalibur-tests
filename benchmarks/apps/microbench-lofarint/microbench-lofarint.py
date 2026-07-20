@@ -94,7 +94,7 @@ class MicrobenchLOFARINT(ContainerTest):
         self.job_dir = os.path.join(self.outputdir, 'toil/setup_job/')
         self.output_dir = os.path.join(self.outputdir, 'setup_results/')
         self.tmpout_dir = os.path.join(self.outputdir, 'toil/tmp/tmp')
-        self.prerun_cmds = [
+        self.prerun_cmds += [
             f"mkdir {os.path.join(self.outputdir, 'toil')}",
             f"mkdir {os.path.join(self.outputdir, 'toil/tmp')}",
             f"mkdir {self.log_dir}",
@@ -102,9 +102,6 @@ class MicrobenchLOFARINT(ContainerTest):
             f"mkdir {self.output_dir}",
             f"mkdir {self.tmpout_dir}",
             '',
-            f"touch {self.stagedir}/rfm_build.out",
-            f"touch {self.stagedir}/rfm_build.err",
-            f"touch {self.stagedir}/rfm_build.sh",
             f'export CWL_SINGULARITY_CACHE={self.vlbi_singularity_dir}',
             "export SINGULARITY_CACHEDIR=${CWL_SINGULARITY_CACHE}",
             "export APPTAINER_CACHEDIR=${CWL_SINGULARITY_CACHE}",
@@ -202,11 +199,16 @@ class MicrobenchLOFARINT(ContainerTest):
 
     @sanity_function
     def validate(self):
-        with open(os.path.join(self.stagedir, "rfm_job.err")) as myfile:
-            if "Success: True" in myfile.read():
-                return True
-            else:
-                return False
+        return sn.all([
+            super().validate(),
+            sn.assert_found('Success: True', self.stderr)
+        ])
+#        with open(os.path.join(self.stagedir, "rfm_job.err")) as myfile:
+#
+#            if "Success: True" in myfile.read():
+#                return True
+#            else:
+#                return False
 
     @run_before("performance")
     def output_list_dict(self):

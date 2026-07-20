@@ -59,18 +59,6 @@ class MicrobenchEOR(ContainerTest):
             subprocess.run(f"wget -O {file_name} {file}", shell=True)
 
     @run_before('run')
-    def add_prerun_cmds(self):
-        self.prerun_cmds = [
-            f"touch {self.stagedir}/rfm_build.out",
-            f"touch {self.stagedir}/rfm_build.err",
-            f"touch {self.stagedir}/rfm_build.sh",
-            f"echo \"Workflow start: $(date '+%Y-%m-%d %H:%M:%S')\" > {self.outputdir}/output.log"
-        ]
-        self.postrun_cmds = [
-            f"echo \"Workflow end: $(date '+%Y-%m-%d %H:%M:%S')\" >> {self.outputdir}/output.log"
-        ]
-
-    @run_before('run')
     def set_executable_opts(self):
         os.mkdir(os.path.join(self.outputdir, "outputs"))
         self.executable_opts = [
@@ -82,17 +70,18 @@ class MicrobenchEOR(ContainerTest):
             os.path.join(self.code_dir, "scripts/pspec_params_micro.yaml")
         ]
 
-    @run_after('run')
-    def post_run_cmd(self):
-        subprocess.run(f"echo \"Workflow end: $(date '+%Y-%m-%d %H:%M:%S')\" >> {self.outputdir}/output.log", shell=True)
 
     @sanity_function
     def validate(self):
-        with open(os.path.join(self.stagedir, "rfm_job.out")) as myfile:
-            if "All PSPEC MERGE jobs ran through" in myfile.read():
-                return True
-            else:
-                return False
+        return sn.all([
+            super().validate(),
+            sn.assert_found(r'All PSPEC MERGE jobs ran through', self.stdout)
+        ])
+#        with open(os.path.join(self.stagedir, "rfm_job.out")) as myfile:
+#            if "All PSPEC MERGE jobs ran through" in myfile.read():
+#                return super().validate()
+#            else:
+#                return False
 
     @run_after("sanity")
     def output_list_dict(self):
@@ -105,12 +94,12 @@ class MicrobenchEOR(ContainerTest):
         """
         start_str = sn.evaluate(sn.extractsingle(
             r'Workflow start: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
-            pathlib.Path(self.outputdir) / pathlib.Path("output.log"),
+            os.path.join(self.stagedir, "rfm_job.out"),
             tag=1
         ))
         finish_str = sn.evaluate(sn.extractsingle(
             r'Workflow end: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
-            pathlib.Path(self.outputdir) / pathlib.Path("output.log"),
+            os.path.join(self.stagedir, "rfm_job.out"),
             tag=1
         ))
         start = dt.strptime(start_str, "%Y-%m-%d %H:%M:%S")

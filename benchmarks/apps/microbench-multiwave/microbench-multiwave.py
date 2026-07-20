@@ -104,7 +104,10 @@ class MicrobenchMULTIWAVE(ContainerTest):
     @sanity_function
     def validate(self):
         test_fits = fits.open(os.path.join(self.outputdir, "low-mosaic-blanked--final.srl.fits"))
-        return test_fits[1].data.shape[0] > 0
+        return sn.all([
+            super().validate(),
+            test_fits[1].data.shape[0] > 0
+        ])
 
     @run_before("performance")
     def output_list_dict(self):

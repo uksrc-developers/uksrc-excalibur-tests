@@ -114,10 +114,15 @@ def _create_handler(site_config, config_prefix):
 class _KubernetesJob(Job):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._job_name = None
         self._pod_name = None
         self._namespace = None
         self._manifest_path = None
         self._cancelled = False
+
+    @property
+    def job_name(self):
+        return self._job_name
 
     @property
     def pod_name(self):
@@ -181,7 +186,7 @@ class KubernetesJobScheduler(JobScheduler):
         return None
 
     def _build_manifest(self, job):
-        job_name = job._pod_name
+        job_name = job._job_name
         namespace = job._namespace
 
         container = {
@@ -209,36 +214,6 @@ class KubernetesJobScheduler(JobScheduler):
                 }
             },
         }
-
-        if job.use_persistent_storage:
-            volumes = [
-                {
-                    'name': 'stagedir',
-                    'hostPath': {
-                        'path': job.stagedir,
-                        'type': 'DirectoryOrCreate',
-                    }
-                },
-                {
-                    'name': 'outputdir',
-                    'hostPath': {
-                        'path': job.outputdir,
-                        'type': 'DirectoryOrCreate',
-                    }
-                },
-            ]
-            volume_mounts = [
-                {
-                    'name': 'stagedir',
-                    'mountPath': job.stagedir,
-                },
-                {
-                    'name': 'outputdir',
-                    'mountPath': job.outputdir,
-                },
-            ]
-            container['volumeMounts'] = volume_mounts
-            job_spec['template']['spec']['volumes'] = volumes
 
         if job.time_limit is not None:
             job_spec['activeDeadlineSeconds'] = int(job.time_limit)
@@ -270,7 +245,7 @@ class KubernetesJobScheduler(JobScheduler):
 
         job._namespace = self._namespace_from_options(job)
         base_name = job.name.lower()[:self._BASE_NAME_LEN].replace("_", "-")
-        job._pod_name = self._unique_pod_name(base_name, job._namespace)
+        job._job_name = self._unique_pod_name(base_name, job._namespace)
 
         manifest = self._build_manifest(job)
         manifest_path = os.path.join(job.workdir, f'{job.name}_manifest.yaml')
@@ -282,14 +257,19 @@ class KubernetesJobScheduler(JobScheduler):
 
         osext.run_command(f'kubectl apply -f {manifest_path}', check=True)
 
-        job._jobid = job._pod_name
+        pod  = osext.run_command(
+            f'kubectl get pods -n {job._namespace}'
+        ).stdout
+        job._pod_name = pod[pod.find(job._job_name):].split()[0]
+
+        job._jobid = job._job_name
         job._submit_time = time.time()
         job._state = 'QUEUED'
         self.log(f'submitted k8s job: {job._jobid}')
 
     def cancel(self, job):
         osext.run_command(
-            f'kubectl delete job {job._pod_name} '
+            f'kubectl delete job {job._job_name} '
             f'-n {job._namespace} --ignore-not-found',
             check=True,
         )
@@ -315,7 +295,7 @@ class KubernetesJobScheduler(JobScheduler):
 
     def _poll_job(self, job):
         completed = osext.run_command(
-            f'kubectl get job {job._pod_name} -n {job._namespace} -o json'
+            f'kubectl get job {job._job_name} -n {job._namespace} -o json'
         )
 
         if completed.returncode != 0:
@@ -324,7 +304,7 @@ class KubernetesJobScheduler(JobScheduler):
                 job._exitcode = 1
                 self._retrieve_logs(job)
             else:
-                self.log(f'kubectl get job returned error for {job._pod_name}: {completed.stderr.strip()}')
+                self.log(f'kubectl get job returned error for {job._job_name}: {completed.stderr.strip()}')
             return
 
         try:
@@ -411,12 +391,12 @@ class KubernetesJobScheduler(JobScheduler):
 
     def _retrieve_logs(self, job):
         completed = osext.run_command(
-            f'kubectl get pods -n {job._namespace} '
-            f'--selector=job-name={job._pod_name} '
-            f'-o jsonpath=\'{{.items[0].metadata.name}}\''
+            f'kubectl get pods -n {job._namespace} {job._pod_name} '
+            f'-o jsonpath=\'{{.metadata.name}}\''
         )
 
         pod_name = completed.stdout.strip("'").strip()
+
         if not pod_name or completed.returncode != 0:
             open(os.path.join(job.workdir, job.stdout), 'a').close()
             open(os.path.join(job.workdir, job.stderr), 'a').close()
@@ -426,11 +406,8 @@ class KubernetesJobScheduler(JobScheduler):
             f'kubectl logs {job._pod_name}'
         )
 
-        with open(os.path.join(job.outputdir, job.stdout), 'w') as f:
+        with open(os.path.join(job.outputdir, "kubernetes_job.out"), 'w') as f:
             f.write(logs.stdout)
-
-        with open(os.path.join(job.outputdir, job.stderr), 'w') as f:
-            f.write(logs.stderr)
 
 class _CanfarJob(Job):
     def __init__(self, *args, **kwargs):

@@ -65,8 +65,11 @@ class FftBenmchmarkBase(SpackTest):
     @sanity_function
     def validate(self):
         if getattr(self.current_partition.scheduler, 'container_scheduler', False):
-            return True
-        return sn.assert_true(self.output_file)
+            return super().validate()
+        return sn.all([
+            super().validate(),
+            sn.assert_true(self.output_file)
+        ])
 
     @run_before("performance")
     def output_list_dict(self):
