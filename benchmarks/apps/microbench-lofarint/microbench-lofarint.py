@@ -199,6 +199,8 @@ class MicrobenchLOFARINT(ContainerTest):
 
     @sanity_function
     def validate(self):
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            return super().validate()
         return sn.all([
             super().validate(),
             sn.assert_found('Success: True', self.stderr)

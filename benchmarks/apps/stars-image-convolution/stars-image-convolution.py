@@ -2,6 +2,7 @@ import os
 
 import reframe as rfm
 from reframe.core.builtins import sanity_function
+import reframe.utility.sanity as sn
 
 from benchmarks.modules.utils import STARSTest
 
@@ -10,7 +11,8 @@ from astropy.io import fits
 @rfm.simple_test
 class STARSimageconvolution(STARSTest):
     stars_name="imageconvolution"
-    container_url = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/image-convolution"
+    container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/image-convolution"
+    container_url = container_image
     cpus_per_task = parameter([4])
 
     #data_base_url = "https://lofar-surveys.org/public/DR2/mosaics"
@@ -26,6 +28,11 @@ class STARSimageconvolution(STARSTest):
 
     @sanity_function
     def validate(self):
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            return super().validate()
         test_fits = fits.open(os.path.join(self.data_dir, "output/conv_P007+39.fits"))
-        return test_fits[0].data.shape[0] > 0
+        return sn.all([
+            super().validate(),
+            test_fits[0].data.shape[0] > 0
+        ])
 

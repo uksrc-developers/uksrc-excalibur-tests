@@ -189,10 +189,11 @@ class KubernetesJobScheduler(JobScheduler):
         job_name = job._job_name
         namespace = job._namespace
 
+        command = f"{job.container_precmd}\necho Workflow start: $(date \"+%Y-%m-%d %H:%M:%S\")\n{job.container_cmd}\necho Workflow end: $(date \"+%Y-%m-%d %H:%M:%S\")"
         container = {
             'name': job_name,
-            'image': job.container_image,
-            'command': ["bash", "-c", job.container_cmd],
+            'image': job.container_image.replace("docker://", ""),
+            'command':  ["/bin/bash", "-c", command],
         }
 
         pull_policy = self._pull_policy_from_options(job)

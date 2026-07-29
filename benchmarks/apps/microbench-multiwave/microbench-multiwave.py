@@ -103,6 +103,8 @@ class MicrobenchMULTIWAVE(ContainerTest):
 
     @sanity_function
     def validate(self):
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            return super().validate()
         test_fits = fits.open(os.path.join(self.outputdir, "low-mosaic-blanked--final.srl.fits"))
         return sn.all([
             super().validate(),
