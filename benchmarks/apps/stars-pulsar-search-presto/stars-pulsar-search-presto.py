@@ -11,6 +11,7 @@ from astropy.io import fits
 @rfm.simple_test
 class STARSpulsarsearchpresto(STARSTest):
     stars_name="pulsarsearchpresto"
+    tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/pulsar-search-presto"
     container_url = container_image
     cpus_per_task = parameter([16])

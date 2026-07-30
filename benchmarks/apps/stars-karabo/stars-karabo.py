@@ -9,6 +9,7 @@ from benchmarks.modules.utils import STARSTest
 @rfm.simple_test
 class STARSkarabo(STARSTest):
     stars_name="karabo"
+    tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/karabo"
     container_url = container_image
 

@@ -11,6 +11,7 @@ from astropy.io import fits
 @rfm.simple_test
 class STARSimageconvolution(STARSTest):
     stars_name="imageconvolution"
+    tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/image-convolution"
     container_url = container_image
     cpus_per_task = parameter([4])

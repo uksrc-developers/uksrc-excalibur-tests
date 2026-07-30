@@ -6,16 +6,18 @@ import reframe.utility.sanity as sn
 
 from benchmarks.modules.utils import STARSTest
 
+# THE TEST DOES NOT FUNCTION ON LOCAL LAPTOP, NEEDS TESTING ON HPC
 @rfm.simple_test
-class STARSmosaickingswarp(STARSTest):
-    stars_name="mosaicking-swarp"
+class STARSrmsynthesis(STARSTest):
+    stars_name="rm-synthesis"
+    valid_systems = ["-low_memory"]
     tags = {"stars"}
-    container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/mosaicking-swarp"
+    container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/rm-synthesis"
     container_url = container_image
 
-    container_precmd += "cd ..\n/scripts/get-data.sh\ncd /data"
+    container_precmd += "cd ..\n/scripts/get-data.sh\ncd /data\n"
 
-    container_cmd = "/scripts/run-task.sh"
+    container_cmd = "/scripts/run-rmsynth3d.sh"
     execute_script = container_cmd
 
     @sanity_function

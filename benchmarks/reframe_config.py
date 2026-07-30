@@ -1214,6 +1214,7 @@ site_configuration = {
                     'scheduler': 'local',
                     'launcher': 'local',
                     'environs': ['default'],
+                    'features': ['low_memory']
                 },
             ]
         },  # end default
@@ -1233,6 +1234,7 @@ site_configuration = {
 #                        '--pull-policy=Never',
 #                    ],
                     'environs': ['default'],
+                    'features': ['low_memory']
                 },
             ]
         }, # end local kind

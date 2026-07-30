@@ -9,6 +9,7 @@ from benchmarks.modules.utils import STARSTest
 @rfm.simple_test
 class STARSsourcefindingpybdsf(STARSTest):
     stars_name="source-finding-pybdsf"
+    tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/source-finding-pybdsf"
     container_url = container_image
 

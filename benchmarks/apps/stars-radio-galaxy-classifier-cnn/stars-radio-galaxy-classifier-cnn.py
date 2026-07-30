@@ -10,6 +10,7 @@ from benchmarks.modules.utils import STARSTest
 @rfm.simple_test
 class STARSradiogalaxyclassifiercnn(STARSTest):
     stars_name="radio-galaxy-classifier-cnn"
+    tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/radio-galaxy-classifier-cnn"
     container_url = container_image
 

@@ -11,6 +11,7 @@ from astropy.io import fits
 @rfm.simple_test
 class STARSimagecoaddingswarp(STARSTest):
     stars_name="imagecoaddingswarp"
+    tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/image-coadding-swarp"
     container_url = container_image
 
@@ -22,7 +23,7 @@ class STARSimagecoaddingswarp(STARSTest):
                {"filename":"frame-r-001233-5-0038.fits.bz2", "url":"http://dr17.sdss.org/sas/dr17/eboss/photoObj/frames/301/1233/5/frame-r-001233-5-0038.fits.bz2", "decompress":"bzip2"},
                {"filename":"frame-r-001334-5-0056.fits.bz2", "url":"http://dr17.sdss.org/sas/dr17/eboss/photoObj/frames/301/1334/5/frame-r-001334-5-0056.fits.bz2", "decompress":"bzip2"}]
 
-    container_cmd = "./coadd-sdss.sh"
+    container_cmd = "/scripts/coadd-sdss.sh"
     execute_script = container_cmd
 
     @sanity_function
