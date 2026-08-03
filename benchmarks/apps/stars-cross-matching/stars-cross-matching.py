@@ -16,6 +16,9 @@ class STARScrossmatch(STARSTest):
     container_url = container_image
 
     container_cmd = "python3 /scripts/crossmatch.py"
+    execute_script = container_cmd
+
+    reference_time = 14.67
 
     @sanity_function
     def validate(self):

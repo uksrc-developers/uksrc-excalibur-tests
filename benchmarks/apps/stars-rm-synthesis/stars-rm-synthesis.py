@@ -20,6 +20,8 @@ class STARSrmsynthesis(STARSTest):
     container_cmd = "/scripts/run-rmsynth3d.sh"
     execute_script = container_cmd
 
+    reference_time = 915.0
+
     @sanity_function
     def validate(self):
         if getattr(self.current_partition.scheduler, 'container_scheduler', False):

@@ -10,7 +10,6 @@ from pathlib import Path
 import yaml
 from reframe.core.backends import register_scheduler
 from reframe.core.exceptions import JobError, JobSchedulerError
-from reframe.core.logging import register_log_handler
 from reframe.core.schedulers import JobScheduler, Job
 from reframe.utility import osext, toalphanum
 
@@ -18,7 +17,6 @@ from reframe.utility import osext, toalphanum
 CONFIG_DIR = Path(__file__).resolve().parent
 if str(CONFIG_DIR) not in sys.path:
     sys.path.insert(0, str(CONFIG_DIR))
-from modules.perf_logs import DatabaseConnection
 
 # OpenMPI Launcher on COSMA7 Rockport network:
 # <https://www.dur.ac.uk/icc/cosma/support/rockport/>.
@@ -54,62 +52,6 @@ def spack_root_to_path():
     # `spack_bindir` isn't in PATH already, prepend to it.
     return spack_bindir + os.path.pathsep + path
 
-
-# swiftdb data sending updates a sql database object on an OpenStack swift object store.
-class SwiftDBHandler(logging.Handler):
-    def __init__(self, container, db_file, os_options):
-        super().__init__()
-        self.container = container
-        self.db_file = db_file
-        self.os_options = os_options
-        self.table_name = None
-        self.pending_records = []
-
-    def emit(self, record):
-        self.table_name = getattr(record, '__rfm_check__', None).bench_name
-        # Just collect records - don't hit the database yet
-        content = getattr(record, '__rfm_check__', None).output_dict_list
-        for output in content:
-            self.pending_records.append({
-                **output
-            })
-
-    def flush(self):
-        if not self.pending_records:
-            return
-
-        with DatabaseConnection(
-                container=self.container,
-                db_file=self.db_file,
-                os_options=self.os_options
-        ) as db_c:
-            # Create table if needed
-            table_creation_string = f"CREATE TABLE IF NOT EXISTS {self.table_name} (testID INTEGER PRIMARY KEY AUTOINCREMENT"
-            for k, v in self.pending_records[0].items():
-                table_creation_string += f", {k} {('TEXT' if type(v)==str else 'REAL')} NOT NULL"
-            table_creation_string+=");"
-            db_c.cur.execute(table_creation_string)
-            db_c.con.commit()
-            execute_many_string = f"""INSERT INTO {self.table_name} ({", ".join(self.pending_records[0].keys())}) VALUES (:{", :".join(self.pending_records[0].keys())})"""
-            # Insert all pending records
-            db_c.cur.executemany(execute_many_string, self.pending_records)
-            db_c.con.commit()
-        self.pending_records = []
-
-    def close(self):
-        self.flush()
-        super().close()
-
-@register_log_handler("swiftdb")
-def _create_handler(site_config, config_prefix):
-    return SwiftDBHandler(
-        container=os.environ.get('DB_CONTAINER', 'excalibur_tests_results'),
-        db_file=os.environ.get('DB_FILE', 'reframe_results.db'),
-        os_options={
-            "interface": os.environ.get("OS_INTERFACE"),
-            "region_name": os.environ.get('OS_REGION_NAME'),
-        }
-    )
 
 class _KubernetesJob(Job):
     def __init__(self, *args, **kwargs):
@@ -195,6 +137,8 @@ class KubernetesJobScheduler(JobScheduler):
             'image': job.container_image.replace("docker://", ""),
             'command':  ["/bin/bash", "-c", command],
         }
+        if job.env_variables:
+            container['env'] = [{"name": k, "value": v} for k, v in job.env_variables.items()]
 
         pull_policy = self._pull_policy_from_options(job)
         if pull_policy:
@@ -409,6 +353,7 @@ class KubernetesJobScheduler(JobScheduler):
 
         with open(os.path.join(job.outputdir, "kubernetes_job.out"), 'w') as f:
             f.write(logs.stdout)
+
 
 class _CanfarJob(Job):
     def __init__(self, *args, **kwargs):
@@ -1357,13 +1302,6 @@ site_configuration = {
                         '%(check_perf_upper_thres)s|'
                     ),
                     'append': True
-                },
-                {
-                    'type': 'swiftdb',
-                    'level': 'info',
-                    'debug': False,
-                    'extras': {'facility': 'reframe'},
-                    'ignore_keys': [],
                 }
             ]
         }

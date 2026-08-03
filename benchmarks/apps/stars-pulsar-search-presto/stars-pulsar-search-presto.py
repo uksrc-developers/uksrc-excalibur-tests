@@ -11,6 +11,7 @@ from astropy.io import fits
 @rfm.simple_test
 class STARSpulsarsearchpresto(STARSTest):
     stars_name="pulsarsearchpresto"
+    valid_systems = ["-low_memory"]
     tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/pulsar-search-presto"
     container_url = container_image
@@ -18,7 +19,9 @@ class STARSpulsarsearchpresto(STARSTest):
 
     # dataset is a list of dicts with "filename" and "url" fields
     dataset = [{"filename":"splice_0001.fits", "url":"https://zenodo.org/records/10989783/files/splice_0001.fits?download=1"}]
-    env = 'DATA=big'
+    env_variables["DATA"] = 'big'
+
+    reference_time = 12252.0
 
     @sanity_function
     def validate(self):
