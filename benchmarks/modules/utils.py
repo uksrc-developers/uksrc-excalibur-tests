@@ -283,6 +283,8 @@ class ContainerTest(rfm.RegressionTest, special=True):
 
     run_time = variable(float, value=-1.0)
 
+    in_container = variable(bool, value=False, loggable=True)
+
     def __init__(self):
         self._is_container_job = False
 
@@ -292,7 +294,7 @@ class ContainerTest(rfm.RegressionTest, special=True):
             if self.container_cmd == "":
                 import inspect
                 path = inspect.getfile(type(self))
-                self.container_cmd = f'reframe --system=default -c /opt/uksrc-excalibur-tests/{path[path.find("benchmarks/apps"):]} -n {type(self).__name__} -r'
+                self.container_cmd = f'reframe --system=default -S in_container=True -c /opt/uksrc-excalibur-tests/{path[path.find("benchmarks/apps"):]} -n {type(self).__name__} -r'
             self._is_container_job = True
             self.job.container_image = self.container_image
             self.job.container_cmd = self.container_cmd
@@ -430,7 +432,7 @@ class ContainerTest(rfm.RegressionTest, special=True):
 
     @run_after("run")
     def container_print_out(self):
-        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+        if self.in_container:
             subprocess.run(f"echo ===rfm_job.out===", shell=True)
             subprocess.run(f"cat {self.outputdir}/rfm_job.out", shell=True)
             subprocess.run(f"echo ===rfm_job.out-end===", shell=True)
@@ -626,7 +628,6 @@ class STARSTest(ContainerTest):
         output.write(f"STARSscore, {self.stars_name}, {score}")
         output.close()
         return score
-
 
 
 class SpackTest(ContainerTest): #(rfm.RegressionTest):
