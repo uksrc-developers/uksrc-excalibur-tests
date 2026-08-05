@@ -88,7 +88,7 @@ class KubernetesJobScheduler(JobScheduler):
         job_name = job._job_name
         namespace = job._namespace
 
-        command = f"{job.container_precmd}\necho Workflow start: $(date \"+%Y-%m-%d %H:%M:%S\")\n{job.container_cmd}\necho Workflow end: $(date \"+%Y-%m-%d %H:%M:%S\")"
+        command = f"{job.container_precmd.replace("\n", ";")};echo Workflow start: $(date \"+%Y-%m-%d %H:%M:%S\");{job.container_cmd};echo Workflow end: $(date \"+%Y-%m-%d %H:%M:%S\")"
         container = {
             'name': job_name,
             'image': job.container_image.replace("docker://", ""),
@@ -308,5 +308,5 @@ class KubernetesJobScheduler(JobScheduler):
             f'kubectl logs {job._pod_name}'
         )
 
-        with open(os.path.join(job.outputdir, "kubernetes_job.out"), 'w') as f:
+        with open(os.path.join(job.outputdir, "container_job.out"), 'w') as f:
             f.write(logs.stdout)

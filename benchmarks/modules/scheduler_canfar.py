@@ -68,7 +68,8 @@ class CanfarJobScheduler(JobScheduler):
             raise JobSchedulerError('canfar package is required for the canfar scheduler')
         job._session_name = job.name.lower()[:job.name.find(' ')]
         try:
-            print('submitting job with cmd: \n{}'.format(job.container_cmd.replace(" ", "\t")))
+            command = f"{job.container_precmd}\necho Workflow start: $(date \"+%Y-%m-%d %H:%M:%S\")\n{job.container_cmd}\necho Workflow end: $(date \"+%Y-%m-%d %H:%M:%S\")".replace(" ", "\t")
+            print('submitting job with cmd: \n{}'.format(command.replace("\t", " ")))
             job._jobid =  self.connection_session.create(
                 name="headless-test",
                 image=job.container_image,
@@ -76,7 +77,7 @@ class CanfarJobScheduler(JobScheduler):
                 cmd="bash",
                 env=job.env_variables,
                 # in order to allow commands to remain as one argument for "bash -c <commands>" we replace the spaces with \t
-                args="-c " + 'echo\t' + job.container_cmd.replace(" ", "\t") + '&&' + job.container_cmd.replace(" ", "\t")
+                args="-c " + command
             )[0]
             print(f"Session ID = {job._jobid}")
         except:
@@ -141,13 +142,5 @@ class CanfarJobScheduler(JobScheduler):
 
         logs = self.connection_session.logs(job._jobid)[job._jobid]
 
-        if job._state == "Completed":
-            with open(os.path.join(job.outputdir, job.stdout), 'w') as f:
-                f.write(logs)
-            with open(os.path.join(job.outputdir.replace('/output/', '/stage/'), job.stdout), 'w') as f:
-                f.write(logs)
-        else:
-            with open(os.path.join(job.outputdir, job.stderr), 'w') as f:
-                f.write(logs)
-            with open(os.path.join(job.outputdir.replace('/output/', '/stage/'), job.stderr), 'w') as f:
-                f.write(logs)
+        with open(os.path.join(job.outputdir, "container_job.out"), 'w') as f:
+            f.write(logs)

@@ -300,9 +300,9 @@ class ContainerTest(rfm.RegressionTest, special=True):
             self.job.env_variables = self.env_variables
             self.job.use_persistent_storage = self.use_persistent_storage
             self.job.outputdir = self.outputdir
-        open(os.path.join(self.stagedir, "rfm_build.sh"), 'w').close()
-        open(os.path.join(self.stagedir, "rfm_build.out"), 'w').close()
-        open(os.path.join(self.stagedir, "rfm_build.err"), 'w').close()
+            open(os.path.join(self.stagedir, "rfm_build.sh"), 'w').close()
+            open(os.path.join(self.stagedir, "rfm_build.out"), 'w').close()
+            open(os.path.join(self.stagedir, "rfm_build.err"), 'w').close()
 
     @run_before('compile')
     def add_profiler(self):
@@ -428,6 +428,17 @@ class ContainerTest(rfm.RegressionTest, special=True):
             return True
         return super().compile_complete()
 
+    @run_after("run")
+    def container_print_out(self):
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            subprocess.run(f"echo ===rfm_job.out===", shell=True)
+            subprocess.run(f"cat {self.outputdir}/rfm_job.out", shell=True)
+            subprocess.run(f"echo ===rfm_job.out-end===", shell=True)
+            subprocess.run(f"echo ===rfm_job.err===", shell=True)
+            subprocess.run(f"cat {self.outputdir}/rfm_job.err", shell=True)
+            subprocess.run(f"echo ===rfm_job.err-end===", shell=True)
+
+
     @run_before("performance")
     def output_list_dict(self):
         """
@@ -440,12 +451,12 @@ class ContainerTest(rfm.RegressionTest, special=True):
         if getattr(self.current_partition.scheduler, 'container_scheduler', False):
             start_str = sn.evaluate(sn.extractsingle(
                 r'Workflow start: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
-                pathlib.Path(self.outputdir) / pathlib.Path("kubernetes_job.out"),
+                pathlib.Path(self.outputdir) / pathlib.Path("container_job.out"),
                 tag=1
             ))
             finish_str = sn.evaluate(sn.extractsingle(
                 r'Workflow end: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
-                pathlib.Path(self.outputdir) / pathlib.Path("kubernetes_job.out"),
+                pathlib.Path(self.outputdir) / pathlib.Path("container_job.out"),
                 tag=1
             ))
         else:
@@ -478,7 +489,7 @@ class ContainerTest(rfm.RegressionTest, special=True):
     @sanity_function
     def validate(self):
         if getattr(self.current_partition.scheduler, 'container_scheduler', False) and "reframe" in self.container_cmd:
-            return sn.assert_found(r'\x1b\[32m PASSED \x1b\[0m', os.path.join(self.outputdir, "kubernetes_job.out"))
+            return sn.assert_found(r'\x1b\[32m PASSED \x1b\[0m', os.path.join(self.outputdir, "container_job.out"))
         else:
             return True
 
@@ -552,15 +563,15 @@ class STARSTest(ContainerTest):
         else:
             if self.data_mode is None:
                 for a in self.data_directories:
-                    self.container_precmd = self.container_precmd + f"mkdir -p {self.container_datadir}/{a}\n"
+                    self.container_precmd += f"mkdir -p {self.container_datadir}/{a}\n"
                 for a in self.dataset:
                     if not os.path.isfile(os.path.join(self.data_dir, a['filename'])):
-                       self.container_precmd = self.container_precmd + f"wget -nc {a['url']} -O {self.container_datadir}/{a['filename']}\n"
+                       self.container_precmd += f"wget -nc {a['url']} -O {self.container_datadir}/{a['filename']}\n"
                     if "decompress" in a.keys():
                         if a["decompress"] == "bzip2":
-                            self.container_precmd = self.container_precmd + f"bzip2 -dfk {self.container_datadir}/{a['filename']}\n"
+                            self.container_precmd += f"bzip2 -dfk {self.container_datadir}/{a['filename']}\n"
                         elif a["decompress"] == "gzip":
-                            self.container_precmd = self.container_precmd + f"gzip -dfk {self.container_datadir}/{a['filename']}\n"
+                            self.container_precmd += f"gzip -dfk {self.container_datadir}/{a['filename']}\n"
             else:
                 # At this point the contents of data_mode should be the path to a bash script to download the data.
                 environs = " ".join([f"--env {k}={v}" for k, v in self.env_variables.items()])
@@ -605,10 +616,15 @@ class STARSTest(ContainerTest):
             os.path.join("/output/ssh_job.sh")
         ]
 
-    @performance_function('starscore')
-    def dummy_perf(self):
+    @performance_function('STARSscore')
+    def STARSscore(self):
         score = round(self.run_time/self.reference_time, 2)
-        print(f"STARSscore for {self.stars_name}: {score}")
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            output = open(os.path.join(self.outputdir, "container_job.out"), 'a')
+        else:
+            output = open(os.path.join(self.stdout), 'a')
+        output.write(f"STARSscore, {self.stars_name}, {score}")
+        output.close()
         return score
 
 

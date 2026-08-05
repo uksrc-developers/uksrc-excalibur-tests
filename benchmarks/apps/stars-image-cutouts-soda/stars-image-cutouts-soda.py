@@ -10,6 +10,7 @@ from benchmarks.modules.utils import STARSTest
 @rfm.simple_test
 class STARSimagecutoutssoda(STARSTest):
     stars_name="image-cutouts-soda"
+    valid_systems = ["-low_memory"]
     tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/image-cutouts-soda"
     container_url = container_image
@@ -20,6 +21,8 @@ class STARSimagecutoutssoda(STARSTest):
     container_precmd += "cd /scripts\nmkdir /examples\n"
     container_cmd = "./pipeline.sh"
     execute_script = container_cmd
+
+    reference_time = None
 
     @sanity_function
     def validate(self):

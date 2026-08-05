@@ -1,4 +1,5 @@
 import pathlib, os
+import subprocess
 
 from datetime import datetime as dt
 import reframe.utility.sanity as sn
@@ -32,14 +33,6 @@ class FftBenmchmarkBase(SpackTest):
 
     executable = 'FFT_Bench'
 
-    reference = {
-        'myriad': {
-            'Libarary': ("FFTW", None, None, None),
-            'Size': (1., None, None, 'MB'),
-            'Time': (1., None, None, 'miliseconds'),
-        }
-    }
-
     output_file = "default.txt"
 
     @run_before('setup')
@@ -55,7 +48,7 @@ class FftBenmchmarkBase(SpackTest):
         # ReFrame built-in `env_vars` variable.
         self.env_vars['OMP_NUM_THREADS'] = f'{self.num_cpus_per_task}'
 
-    @run_before('run')
+    @run_after('compile')
     def set_container_cmd(self):
         self.output_file = os.path.join(self.outputdir, self.output_file)
         import inspect
@@ -119,6 +112,7 @@ class FftBenchmarkCPU(FftBenmchmarkBase):
     # -r int = Number of runs to perform (min 1, max 7)
     # -c int = Number of times to repeat the transforms, for averaging times.
     output_file = 'FFTW_only.txt'
+    # container_cmd = reframe --system=default -c /opt/uksrc-excalibur-tests/benchmarks/apps/fft-bench -n FftBenchmarkCPU -S FftBenchmarkCPU.transform_count=2 -S FftBenchmarkCPU.repeat_count=2 -r
 
     @run_before('setup')
     def setup_variables(self):
