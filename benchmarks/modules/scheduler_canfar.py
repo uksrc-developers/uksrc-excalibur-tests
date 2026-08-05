@@ -68,7 +68,7 @@ class CanfarJobScheduler(JobScheduler):
             raise JobSchedulerError('canfar package is required for the canfar scheduler')
         job._session_name = job.name.lower()[:job.name.find(' ')]
         try:
-            command = "{precmd};echo Workflow start: $(date \"+%Y-%m-%d %H:%M:%S\");{cmd};echo Workflow end: $(date \"+%Y-%m-%d %H:%M:%S\")".format(precmd=job.container_precmd.replace('\n', ';'), cmd=job.container_cmd)
+            command = "{precmd}echo Workflow start: $(date \"+%Y-%m-%d %H:%M:%S\");{cmd};echo Workflow end: $(date \"+%Y-%m-%d %H:%M:%S\")".format(precmd=job.container_precmd.replace('\n', ';'), cmd=job.container_cmd)
             print('submitting job with cmd: \n{}'.format(command.replace("\t", " ")))
             job._jobid =  self.connection_session.create(
                 name="headless-test",

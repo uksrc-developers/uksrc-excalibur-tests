@@ -13,7 +13,7 @@ class STARSmosaickingswarp(STARSTest):
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/mosaicking-swarp"
     container_url = container_image
 
-    container_precmd += "cd ..\n/scripts/get-data.sh\ncd /data"
+    container_precmd += "cd ..\n/scripts/get-data.sh\ncd /data\n"
 
     container_cmd = "/scripts/run-task.sh"
     execute_script = container_cmd
