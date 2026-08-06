@@ -68,8 +68,8 @@ class CanfarJobScheduler(JobScheduler):
             raise JobSchedulerError('canfar package is required for the canfar scheduler')
         job._session_name = job.name.lower()[:job.name.find(' ')]
         try:
-            command = "{precmd}echo Workflow start:;date '+%Y-%m-%d %H:%M:%S';{cmd};echo Workflow end:;date '+%Y-%m-%d %H:%M:%S'".format(precmd=job.container_precmd.replace('\n', ';'), cmd=job.container_cmd)
-            print('submitting job with cmd: \n{}'.format(command.replace("\t", " ")))
+            command = "{precmd}echo Workflow start: && date '+%Y-%m-%d %H:%M:%S' && {cmd} && echo Workflow end: && date '+%Y-%m-%d %H:%M:%S'".format(precmd=job.container_precmd.replace('\n', '&&').replace(" ", "\t"), cmd=job.container_cmd.replace(" ", "\t")).split()
+            print(f'submitting job with args: \n-c {command}')
             job._jobid =  self.connection_session.create(
                 name="headless-test",
                 image=job.container_image,
@@ -77,7 +77,7 @@ class CanfarJobScheduler(JobScheduler):
                 cmd="bash",
                 env=job.env_variables,
                 # in order to allow commands to remain as one argument for "bash -c <commands>" we replace the spaces with \t
-                args="-c " + command
+                args="-c {}".format('\t'.join(command))
             )[0]
             print(f"Session ID = {job._jobid}")
         except:
@@ -134,6 +134,8 @@ class CanfarJobScheduler(JobScheduler):
                 and time.time() - job.submit_time >= job.max_pending_time):
             self.cancel(job)
             job._exception = JobError('maximum pending time exceeded', job.jobid)
+            with open(os.path.join(job.outputdir, "container_job.out"), 'w') as f:
+                f.write(f"Job: {job.jobid}, exceeded maximum pending time.")
             return
 
     def _retrieve_logs(self, job):
@@ -141,6 +143,7 @@ class CanfarJobScheduler(JobScheduler):
             return
 
         logs = self.connection_session.logs(job._jobid)[job._jobid]
+        print(logs)
 
         with open(os.path.join(job.outputdir, "container_job.out"), 'w') as f:
             f.write(logs)

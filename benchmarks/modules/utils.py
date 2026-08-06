@@ -430,7 +430,7 @@ class ContainerTest(rfm.RegressionTest, special=True):
             return True
         return super().compile_complete()
 
-    @run_after("run")
+    @run_after("performance")
     def container_print_out(self):
         if self.in_container:
             subprocess.run(f"echo ===rfm_job.out===", shell=True)
@@ -668,7 +668,6 @@ class SpackTest(ContainerTest): #(rfm.RegressionTest):
             f'spack -e {self.build_system.environment} config add "config:install_tree:root:{env_dir}/opt"',
         ]
 
-        self.postrun_cmds.append(f'echo "spack_spec_dict: $(spack -e {self.build_system.environment} python -c \'{cmd_spack_spec_dict}\')" >> {self.stagedir}/rfm_job.out')
         self.postrun_cmds.append(f'echo "spack_spec_dict: $(spack -e {self.build_system.environment} python -c \'{cmd_spack_spec_dict}\')" >> {self.stdout}')
         self.postrun_cmds.append(f'cat {self.stagedir}/rfm_job.out')
 
