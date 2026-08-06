@@ -430,17 +430,6 @@ class ContainerTest(rfm.RegressionTest, special=True):
             return True
         return super().compile_complete()
 
-    @run_after("performance")
-    def container_print_out(self):
-        if self.in_container:
-            subprocess.run(f"echo ===rfm_job.out===", shell=True)
-            subprocess.run(f"cat {self.outputdir}/rfm_job.out", shell=True)
-            subprocess.run(f"echo ===rfm_job.out-end===", shell=True)
-            subprocess.run(f"echo ===rfm_job.err===", shell=True)
-            subprocess.run(f"cat {self.outputdir}/rfm_job.err", shell=True)
-            subprocess.run(f"echo ===rfm_job.err-end===", shell=True)
-
-
     @run_before("performance")
     def output_list_dict(self):
         """
@@ -494,6 +483,16 @@ class ContainerTest(rfm.RegressionTest, special=True):
             return sn.assert_found(r'\x1b\[32m PASSED \x1b\[0m', os.path.join(self.outputdir, "container_job.out"))
         else:
             return True
+
+    @run_after("cleanup")
+    def container_print_out(self):
+        if self.in_container:
+            subprocess.run(f"echo ===rfm_job.out===", shell=True)
+            subprocess.run(f"cat {self.outputdir}/rfm_job.out", shell=True)
+            subprocess.run(f"echo ===rfm_job.out-end===", shell=True)
+            subprocess.run(f"echo ===rfm_job.err===", shell=True)
+            subprocess.run(f"cat {self.outputdir}/rfm_job.err", shell=True)
+            subprocess.run(f"echo ===rfm_job.err-end===", shell=True)
 
 
 # Subclass to make importing STARS benchmarks easier

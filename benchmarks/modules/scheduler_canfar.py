@@ -139,9 +139,6 @@ class CanfarJobScheduler(JobScheduler):
             return
 
     def _retrieve_logs(self, job):
-        if job._state != "Completed" and job._state != "Failed":
-            return
-
         logs = self.connection_session.logs(job._jobid)[job._jobid]
         print(logs)
 
