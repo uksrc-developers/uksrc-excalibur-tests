@@ -284,6 +284,7 @@ class ContainerTest(rfm.RegressionTest, special=True):
     run_time = variable(float, value=-1.0)
 
     in_container = variable(bool, value=False, loggable=True)
+    in_container_outputfile = variable(str, value="", loggable=True)
 
     def __init__(self):
         self._is_container_job = False
@@ -489,10 +490,15 @@ class ContainerTest(rfm.RegressionTest, special=True):
         if self.in_container:
             subprocess.run(f"echo ===rfm_job.out===", shell=True)
             subprocess.run(f"cat {self.outputdir}/rfm_job.out", shell=True)
-            subprocess.run(f"echo ===rfm_job.out-end===", shell=True)
+            subprocess.run(f"echo ===rfm_job.out END===", shell=True)
             subprocess.run(f"echo ===rfm_job.err===", shell=True)
             subprocess.run(f"cat {self.outputdir}/rfm_job.err", shell=True)
-            subprocess.run(f"echo ===rfm_job.err-end===", shell=True)
+            subprocess.run(f"echo ===rfm_job.err END===", shell=True)
+            if self.in_container_outputfile:
+                subprocess.run(f"echo ===EXTRA OUTPUT===", shell=True)
+                subprocess.run(f"cat {self.outputdir}/{self.in_container_outputfile}", shell=True)
+                subprocess.run(f"echo ===EXTRA OUTPUT END===", shell=True)
+                
 
 
 # Subclass to make importing STARS benchmarks easier

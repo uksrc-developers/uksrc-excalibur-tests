@@ -69,7 +69,7 @@ class CanfarJobScheduler(JobScheduler):
         job._session_name = job.name.lower()[:job.name.find(' ')]
         try:
             command = "{precmd}echo Workflow start: && date '+%Y-%m-%d %H:%M:%S' && {cmd} && echo Workflow end: && date '+%Y-%m-%d %H:%M:%S'".format(precmd=job.container_precmd.replace('\n', '&&').replace(" ", "\t"), cmd=job.container_cmd.replace(" ", "\t")).split()
-            print(f'submitting job with args: \n-c {command}')
+            print('submitting job with args: \n-c {}'.format('\t'.join(command)))
             job._jobid =  self.connection_session.create(
                 name="headless-test",
                 image=job.container_image,

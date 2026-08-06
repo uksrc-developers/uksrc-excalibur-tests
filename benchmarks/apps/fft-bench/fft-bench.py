@@ -34,6 +34,7 @@ class FftBenmchmarkBase(SpackTest):
     executable = 'FFT_Bench'
 
     output_file = "default.txt"
+    in_container_outputfile = output_file
 
     @run_before('setup')
     def setup_variables(self):
@@ -112,6 +113,7 @@ class FftBenchmarkCPU(FftBenmchmarkBase):
     # -r int = Number of runs to perform (min 1, max 7)
     # -c int = Number of times to repeat the transforms, for averaging times.
     output_file = 'FFTW_only.txt'
+    in_container_outputfile = output_file
     # container_cmd = reframe --system=default -c /opt/uksrc-excalibur-tests/benchmarks/apps/fft-bench -n FftBenchmarkCPU -S FftBenchmarkCPU.transform_count=2 -S FftBenchmarkCPU.repeat_count=2 -r
 
     @run_before('setup')
@@ -133,6 +135,7 @@ class FftBenchmarkCUDA(FftBenmchmarkBase):
     spack_logfile = 'spack-build-log-cuda.txt'
     num_gpus_per_node = 1
     output_file = 'FFTW_cuFFT.txt'
+    in_container_outputfile = output_file
 
     @run_before('setup')
     def setup_variables(self):
@@ -153,6 +156,7 @@ class FftBenchmarkROCM(FftBenmchmarkBase):
     spack_logfile = 'spack-build-log-rocm.txt'
     num_gpus_per_node = 1
     output_file = 'FFTW_rocFFT.txt'
+    in_container_outputfile = output_file
 
     @run_before('setup')
     def setup_variables(self):
