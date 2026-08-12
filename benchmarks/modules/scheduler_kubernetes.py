@@ -176,6 +176,7 @@ class KubernetesJobScheduler(JobScheduler):
             check=True,
         )
         job._cancelled = True
+        job._state = 'COMPLETED'
 
     def wait(self, job):
         intervals = itertools.cycle([1, 2, 3])
@@ -186,9 +187,7 @@ class KubernetesJobScheduler(JobScheduler):
     def finished(self, job):
         if job._state != 'COMPLETED':
             return False
-        stdout = os.path.join(job.outputdir, job.stdout)
-        stderr = os.path.join(job.outputdir, job.stderr)
-        return os.path.exists(stdout) and os.path.exists(stderr)
+        return True
 
     def poll(self, *jobs):
         for job in jobs:
@@ -196,10 +195,12 @@ class KubernetesJobScheduler(JobScheduler):
                 self._poll_job(job)
 
     def _poll_job(self, job):
+        if job._state == 'COMPLETED':
+            return
+
         completed = osext.run_command(
             f'kubectl get job {job._job_name} -n {job._namespace} -o json'
         )
-
         if completed.returncode != 0:
             if 'not found' in completed.stderr.lower():
                 job._state = 'COMPLETED'
@@ -213,7 +214,6 @@ class KubernetesJobScheduler(JobScheduler):
             status = json.loads(completed.stdout).get('status', {})
         except json.JSONDecodeError:
             return
-
         for cond in status.get('conditions', []):
             ctype = cond.get('type')
             if cond.get('status') != 'True':
@@ -257,7 +257,7 @@ class KubernetesJobScheduler(JobScheduler):
         for cond in status.get('conditions', []):
             if cond.get('status') != 'True':
                 continue
-            if cond.get('type') == 'Complete':
+            if cond.get('type') == 'Complete' or cond.get('type') == 'SuccessCriteriaMet':
                 return 'complete'
             if cond.get('type') == 'Failed':
                 return 'failed'

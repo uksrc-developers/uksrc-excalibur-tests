@@ -149,6 +149,7 @@ class FftBenchmarkCUDA(FftBenmchmarkBase):
     def setting_call(self):
         self.executable_opts = ["-o", f"{self.outputdir}/{self.output_file}", "-f", "-n", "-r", self.transform_count, "-c", self.repeat_count]
 
+
 @rfm.simple_test
 class FftBenchmarkROCM(FftBenmchmarkBase):
     valid_systems = ['+gpu +rocm']

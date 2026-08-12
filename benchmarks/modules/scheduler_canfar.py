@@ -69,7 +69,7 @@ class CanfarJobScheduler(JobScheduler):
         job._session_name = job.name.lower()[:job.name.find(' ')]
         try:
             command = "{precmd}echo Workflow start: && date '+%Y-%m-%d %H:%M:%S' && {cmd} && echo Workflow end: && date '+%Y-%m-%d %H:%M:%S'".format(precmd=job.container_precmd.replace('\n', '&&').replace(" ", "\t"), cmd=job.container_cmd.replace(" ", "\t")).split()
-            print('submitting job with args: \n-c {}'.format('\t'.join(command)))
+#            print('submitting job with args: \n-c {}'.format('\t'.join(command)))
             job._jobid =  self.connection_session.create(
                 name="headless-test",
                 image=job.container_image,
@@ -86,8 +86,6 @@ class CanfarJobScheduler(JobScheduler):
         job._submit_time = time.time()
         job._state = self.connection_session.info(job._jobid)[0]["status"]
         self.log(f'submitted canfar job: {job._jobid}')
-        open(os.path.join(job.outputdir, job.stdout), 'w').close()
-        open(os.path.join(job.outputdir, job.stderr), 'w').close()
 
     def cancel(self, job):
         #self.connection_session.destroy(job._jobid)
@@ -108,7 +106,6 @@ class CanfarJobScheduler(JobScheduler):
         for job in jobs:
             if job is not None and job._jobid is not None:
                 self._poll_job(job)
-
 
     def _poll_job(self, job):
         try:
@@ -140,7 +137,6 @@ class CanfarJobScheduler(JobScheduler):
 
     def _retrieve_logs(self, job):
         logs = self.connection_session.logs(job._jobid)[job._jobid]
-        print(logs)
 
         with open(os.path.join(job.outputdir, "container_job.out"), 'w') as f:
             f.write(logs)

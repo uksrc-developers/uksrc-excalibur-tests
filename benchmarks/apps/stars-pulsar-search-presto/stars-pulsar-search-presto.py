@@ -14,7 +14,6 @@ class STARSpulsarsearchpresto(STARSTest):
     valid_systems = ["-low_memory"]
     tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/pulsar-search-presto"
-    container_url = container_image
     cpus_per_task = parameter([16])
 
     # dataset is a list of dicts with "filename" and "url" fields

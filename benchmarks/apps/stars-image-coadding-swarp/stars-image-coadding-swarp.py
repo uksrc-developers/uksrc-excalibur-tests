@@ -13,7 +13,6 @@ class STARSimagecoaddingswarp(STARSTest):
     stars_name="imagecoaddingswarp"
     tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/image-coadding-swarp"
-    container_url = container_image
 
     cpus_per_task = parameter([1])
 
@@ -24,7 +23,6 @@ class STARSimagecoaddingswarp(STARSTest):
                {"filename":"frame-r-001334-5-0056.fits.bz2", "url":"http://dr17.sdss.org/sas/dr17/eboss/photoObj/frames/301/1334/5/frame-r-001334-5-0056.fits.bz2", "decompress":"bzip2"}]
 
     container_cmd = "/scripts/coadd-sdss.sh"
-    execute_script = container_cmd
 
     reference_time = 133.0
 

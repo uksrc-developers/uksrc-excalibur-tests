@@ -10,12 +10,8 @@ from benchmarks.modules.utils import STARSTest
 class STARSkarabo_base(STARSTest):
     tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/karabo"
-    container_url = container_image
 
     container_precmd += "/scripts/get-data.sh\n"
-
-    container_cmd = "/scripts/run-task.sh"
-    execute_script = container_cmd
 
     @sanity_function
     def validate(self):

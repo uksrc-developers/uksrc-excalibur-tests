@@ -11,12 +11,10 @@ class STARSsourcefindingpybdsf(STARSTest):
     stars_name="source-finding-pybdsf"
     tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/source-finding-pybdsf"
-    container_url = container_image
 
     container_precmd += "cd ..\n/scripts/get-data.sh\ncd /data\n"
 
     container_cmd = "/scripts/LOTSS-P21-1image/LOTSS-P21-sourcefinding.sh"
-    execute_script = container_cmd
 
     reference_time = 46.67
 

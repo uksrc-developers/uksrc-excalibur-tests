@@ -13,13 +13,11 @@ class STARSimagecutoutsastropy(STARSTest):
     valid_systems = ["-low_memory"]
     tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/image-cutouts-astropy"
-    container_url = container_image
 
     container_precmd += "cd /scripts\nln -s /astro-cutouts/examples /examples\n"
     container_cmd = "python3 /scripts/cutouts.py --format png --geometry 3x3 /examples/Sources.lis"
-    execute_script = container_cmd
 
-    reference_time = None
+    reference_time = -1.0
 
     @sanity_function
     def validate(self):

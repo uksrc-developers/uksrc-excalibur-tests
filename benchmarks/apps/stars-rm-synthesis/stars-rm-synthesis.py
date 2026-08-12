@@ -13,12 +13,10 @@ class STARSrmsynthesis(STARSTest):
     valid_systems = ["-low_memory"]
     tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/rm-synthesis"
-    container_url = container_image
 
     container_precmd += "cd ..\n/scripts/get-data.sh\ncd /data\n"
 
     container_cmd = "/scripts/run-rmsynth3d.sh"
-    execute_script = container_cmd
 
     reference_time = 915.0
 
