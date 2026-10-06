@@ -4,11 +4,11 @@ import reframe as rfm
 from reframe.core.builtins import sanity_function
 import reframe.utility.sanity as sn
 
-from benchmarks.modules.utils import STARSTest
+from benchmarks.modules.utils import ContainerTest
 
 
 @rfm.simple_test
-class STARSradiogalaxyclassifiercnn(STARSTest):
+class STARSradiogalaxyclassifiercnn(ContainerTest):
     stars_name="radio-galaxy-classifier-cnn"
     tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/radio-galaxy-classifier-cnn"

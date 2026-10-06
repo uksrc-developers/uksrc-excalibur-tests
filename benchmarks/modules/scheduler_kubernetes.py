@@ -44,12 +44,12 @@ class KubernetesJobScheduler(JobScheduler):
     '''Kubernetes job scheduler for ReFrame.
 
     Submits tests as Kubernetes batch jobs using kubectl. Intended for use
-    with tests that inherit from ContainerTest.
+    with tests that inherit from TestInContainer.
 
     Any scheduler that submits container jobs should set:
         container_scheduler = True
 
-    This convention allows ContainerTest (and its subclasses) to detect
+    This convention allows TestInContainer (and its subclasses) to detect
     container-aware schedulers without hardcoding scheduler names.
 
     Usage in site_configuration partitions:

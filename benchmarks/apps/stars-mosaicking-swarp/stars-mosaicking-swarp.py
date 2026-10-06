@@ -4,10 +4,10 @@ import reframe as rfm
 from reframe.core.builtins import sanity_function
 import reframe.utility.sanity as sn
 
-from benchmarks.modules.utils import STARSTest
+from benchmarks.modules.utils import ContainerTest
 
 @rfm.simple_test
-class STARSmosaickingswarp(STARSTest):
+class STARSmosaickingswarp(ContainerTest):
     stars_name="mosaicking-swarp"
     tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/mosaicking-swarp"

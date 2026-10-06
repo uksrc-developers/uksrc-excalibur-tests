@@ -4,11 +4,11 @@ import reframe as rfm
 from reframe.core.builtins import sanity_function
 import reframe.utility.sanity as sn
 
-from benchmarks.modules.utils import STARSTest
+from benchmarks.modules.utils import ContainerTest
 
 # THE TEST DOES NOT FUNCTION ON LOCAL LAPTOP, NEEDS TESTING ON HPC
 @rfm.simple_test
-class STARSrmsynthesis(STARSTest):
+class STARSrmsynthesis(ContainerTest):
     stars_name="rm-synthesis"
     valid_systems = ["-low_memory"]
     tags = {"stars"}

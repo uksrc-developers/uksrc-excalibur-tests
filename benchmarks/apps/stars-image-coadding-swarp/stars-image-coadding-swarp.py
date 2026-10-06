@@ -4,12 +4,12 @@ import reframe as rfm
 from reframe.core.builtins import sanity_function
 import reframe.utility.sanity as sn
 
-from benchmarks.modules.utils import STARSTest
+from benchmarks.modules.utils import ContainerTest
 
 from astropy.io import fits
 
 @rfm.simple_test
-class STARSimagecoaddingswarp(STARSTest):
+class STARSimagecoaddingswarp(ContainerTest):
     stars_name="imagecoaddingswarp"
     tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/image-coadding-swarp"

@@ -4,10 +4,10 @@ import reframe as rfm
 from reframe.core.builtins import sanity_function
 import reframe.utility.sanity as sn
 
-from benchmarks.modules.utils import STARSTest
+from benchmarks.modules.utils import ContainerTest
 
 
-class STARSkarabo_base(STARSTest):
+class STARSkarabo_base(ContainerTest):
     tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/karabo"
 

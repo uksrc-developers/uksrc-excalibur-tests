@@ -4,11 +4,11 @@ import reframe as rfm
 from reframe.core.builtins import sanity_function
 import reframe.utility.sanity as sn
 
-from benchmarks.modules.utils import STARSTest
+from benchmarks.modules.utils import ContainerTest
 
 # THE SOURCE TEST DOES NOT FUNCTION AT THIS TIME.
 @rfm.simple_test
-class STARSimagecutoutsastropy(STARSTest):
+class STARSimagecutoutsastropy(ContainerTest):
     stars_name="imagecutoutsastropy"
     valid_systems = ["-low_memory"]
     tags = {"stars"}

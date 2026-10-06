@@ -246,8 +246,8 @@ def identify_build_environment(current_partition):
     return env_dir, cp_dir, subdir
 
 
-class ContainerTest(rfm.RegressionTest, special=True):
-    '''Base class for tests that can be submitted as container jobs.
+class TestInContainer(rfm.RegressionTest, special=True):
+    '''Base class for tests that can be submitted to run within a generic container.
 
     When running on a partition whose scheduler has `container_scheduler = True`,
     the compile phase is skipped and the test is submitted as a container job
@@ -260,7 +260,7 @@ class ContainerTest(rfm.RegressionTest, special=True):
     the container.
 
     Example usage in a test:
-        class MyTest(ContainerTest):
+        class MyTest(TestInContainer):
             container_image = 'registry.example.com/my-image:latest'
             container_cmd = 'bash /opt/run.sh'
     '''
@@ -505,7 +505,12 @@ class ContainerTest(rfm.RegressionTest, special=True):
 
 
 # Subclass to make importing STARS benchmarks easier
-class STARSTest(ContainerTest):
+class ContainerTest(TestInContainer):
+    """
+    Subclass of TestInContainer for tests that themselves require a specific container to run instead of running in a
+    generic container. This was originally created to accomadate the STARS workloads from
+    https://gitlab.com/ska-telescope/src/src-workloads
+    """
     stars_name="generic"
     bench_name=f"STARS_{stars_name}"
 
@@ -641,7 +646,7 @@ class STARSTest(ContainerTest):
         return score
 
 
-class SpackTest(ContainerTest): #(rfm.RegressionTest):
+class SpackTest(TestInContainer): #(rfm.RegressionTest):
     build_system = 'Spack'
     pre_container_stage = None
     spack_spec = variable(str, value='', loggable=True)

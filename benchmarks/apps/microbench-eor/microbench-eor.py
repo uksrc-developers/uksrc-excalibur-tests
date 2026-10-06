@@ -9,11 +9,11 @@ from reframe.core.builtins import sanity_function, parameter, run_before, run_af
 
 from astropy.io import fits
 
-from benchmarks.modules.utils import ContainerTest
+from benchmarks.modules.utils import TestInContainer
 
 
 @rfm.simple_test
-class MicrobenchEOR(ContainerTest):
+class MicrobenchEOR(TestInContainer):
     bench_name="MicrobenchEOR"
     valid_systems = ['*']
     valid_prog_environs = ['default']
@@ -40,7 +40,6 @@ class MicrobenchEOR(ContainerTest):
         self.code_dir = os.path.join(self.stagedir, "EOR_Code")
         subprocess.run(f"cp -R {self.data_dir} {self.stagedir}", shell=True)
         self.data_dir = os.path.join(self.stagedir, "EOR_Data")
-
 
     @run_after('setup')
     def build_singularity(self):
