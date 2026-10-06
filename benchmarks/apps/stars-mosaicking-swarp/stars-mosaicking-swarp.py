@@ -8,7 +8,7 @@ from benchmarks.modules.utils import ContainerTest
 
 @rfm.simple_test
 class STARSmosaickingswarp(ContainerTest):
-    stars_name="mosaicking-swarp"
+    bench_name="STARS_mosaicking-swarp"
     tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/mosaicking-swarp"
 

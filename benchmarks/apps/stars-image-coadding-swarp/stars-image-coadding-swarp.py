@@ -10,7 +10,7 @@ from astropy.io import fits
 
 @rfm.simple_test
 class STARSimagecoaddingswarp(ContainerTest):
-    stars_name="imagecoaddingswarp"
+    bench_name="STARS_imagecoaddingswarp"
     tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/image-coadding-swarp"
 

@@ -10,7 +10,7 @@ from astropy.io import fits
 
 @rfm.simple_test
 class STARSpulsarsearchpresto(ContainerTest):
-    stars_name="pulsarsearchpresto"
+    bench_name="STARS_pulsarsearchpresto"
     valid_systems = ["-low_memory"]
     tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/pulsar-search-presto"

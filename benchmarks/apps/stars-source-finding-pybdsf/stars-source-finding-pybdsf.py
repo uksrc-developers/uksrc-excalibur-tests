@@ -8,7 +8,7 @@ from benchmarks.modules.utils import ContainerTest
 
 @rfm.simple_test
 class STARSsourcefindingpybdsf(ContainerTest):
-    stars_name="source-finding-pybdsf"
+    bench_name="STARS_source-finding-pybdsf"
     tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/source-finding-pybdsf"
 

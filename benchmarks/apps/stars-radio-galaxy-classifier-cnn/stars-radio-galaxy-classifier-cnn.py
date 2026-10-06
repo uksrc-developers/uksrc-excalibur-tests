@@ -9,7 +9,7 @@ from benchmarks.modules.utils import ContainerTest
 
 @rfm.simple_test
 class STARSradiogalaxyclassifiercnn(ContainerTest):
-    stars_name="radio-galaxy-classifier-cnn"
+    bench_name="STARS_radio-galaxy-classifier-cnn"
     tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/radio-galaxy-classifier-cnn"
 

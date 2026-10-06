@@ -23,7 +23,7 @@ class STARSkarabo_base(ContainerTest):
 
 @rfm.simple_test
 class STARSkarabo_sim(STARSkarabo_base):
-    stars_name="karabo_sim"
+    bench_name="STARS_karabo_sim"
     dataset = [
         {"filename": "Combined_input_catalogue_alpha.fits", "url": "https://lofar-surveys.org/public/Combined_input_catalogue_alpha.fits"},
     ]
@@ -32,7 +32,7 @@ class STARSkarabo_sim(STARSkarabo_base):
 
 @rfm.simple_test
 class STARSkarabo_clean(STARSkarabo_base):
-    stars_name="karabo_clean"
+    bench_name="STARS_karabo_clean"
     dataset = [
         {"filename": "mwa-ph1-10x8s-16x80khz.zip", "url": "https://projects.pawsey.org.au/srcnet/mwa-ph1-10x8s-16x80khz.zip", "decompress":"unzip"},
     ]
@@ -41,7 +41,7 @@ class STARSkarabo_clean(STARSkarabo_base):
 
 @rfm.simple_test
 class STARSkarabo_source_find(STARSkarabo_base):
-    stars_name="karabo_source_find"
+    bench_name="STARS_karabo_source_find"
     dataset = [
         {"filename": "mwa-ph1-10x8s-16x80khz.zip", "url": "https://projects.pawsey.org.au/srcnet/mwa-ph1-10x8s-16x80khz.zip", "decompress":"unzip"},
         {"filename": "GGSM_updated.fits", "url": "https://github.com/GLEAM-X/GLEAM-X-pipeline/raw/master/models/GGSM_updated.fits"},

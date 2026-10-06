@@ -9,7 +9,7 @@ from benchmarks.modules.utils import ContainerTest
 # THE SOURCE TEST DOES NOT FUNCTION AT THIS TIME.
 @rfm.simple_test
 class STARSimagecutoutsastropy(ContainerTest):
-    stars_name="imagecutoutsastropy"
+    bench_name="STARS_imagecutoutsastropy"
     valid_systems = ["-low_memory"]
     tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/image-cutouts-astropy"

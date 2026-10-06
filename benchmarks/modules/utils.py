@@ -504,15 +504,12 @@ class TestInContainer(rfm.RegressionTest, special=True):
                 subprocess.run(f"echo ===EXTRA OUTPUT END===", shell=True)
 
 
-# Subclass to make importing STARS benchmarks easier
 class ContainerTest(TestInContainer):
     """
     Subclass of TestInContainer for tests that themselves require a specific container to run instead of running in a
     generic container. This was originally created to accomadate the STARS workloads from
     https://gitlab.com/ska-telescope/src/src-workloads
     """
-    stars_name="generic"
-    bench_name=f"STARS_{stars_name}"
 
     valid_systems = ['*']
     valid_prog_environs = ['default']
@@ -545,7 +542,7 @@ class ContainerTest(TestInContainer):
 
     @run_after('setup')
     def copy_dirs_stage(self):
-        self.bench_name=f"STARS_{self.stars_name.replace('-','_')}"
+        self.bench_name=f"{self.bench_name.replace('-','_')}"
         self.code_dir = os.path.join(self.stagedir, f"{self.bench_name}_Code")
         os.makedirs(self.code_dir, exist_ok=True)
         self.data_dir = os.path.join(self.stagedir, f"{self.bench_name}_Data")
@@ -641,7 +638,7 @@ class ContainerTest(TestInContainer):
             output = open(os.path.join(self.outputdir, "container_job.out"), 'a')
         else:
             output = open(os.path.join(self.stagedir, "rfm_job.out"), 'a')
-        output.write(f"STARSscore, {self.stars_name}, {score}")
+        output.write(f"STARSscore, {self.bench_name}, {score}")
         output.close()
         return score
 

@@ -9,7 +9,7 @@ from benchmarks.modules.utils import ContainerTest
 # THE TEST DOES NOT FUNCTION ON LOCAL LAPTOP, NEEDS TESTING ON HPC
 @rfm.simple_test
 class STARSrmsynthesis(ContainerTest):
-    stars_name="rm-synthesis"
+    bench_name="STARS_rm-synthesis"
     valid_systems = ["-low_memory"]
     tags = {"stars"}
     container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/rm-synthesis"
