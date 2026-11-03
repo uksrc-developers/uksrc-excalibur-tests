@@ -9,17 +9,19 @@ from reframe.core.builtins import sanity_function, parameter, run_before, run_af
 
 from astropy.io import fits
 
+from benchmarks.modules.utils import ContainerTest
+
+
 @rfm.simple_test
-class MicrobenchEOR(rfm.RunOnlyRegressionTest):
+class MicrobenchEOR(ContainerTest):
     bench_name="MicrobenchEOR"
     valid_systems = ['*']
     valid_prog_environs = ['default']
 
-    eor_code_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "EOR_Code")
-    eor_data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "EOR_Data")
-    os.makedirs(eor_data_dir, exist_ok=True)
+    code_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "EOR_Code")
+    data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "EOR_Data")
 
-    hera_pspec_dir = os.path.join(eor_code_dir, 'hera_pspec')
+    hera_pspec_dir = os.path.join(code_dir, 'hera_pspec')
 
     tasks = parameter([1])
     num_tasks_per_node = 1
@@ -29,17 +31,25 @@ class MicrobenchEOR(rfm.RunOnlyRegressionTest):
 
     output_dict_list = []
 
-    @run_before('setup')
+    @run_after('setup')
+    def copy_dirs_stage(self):
+        subprocess.run(f"cp -R {self.code_dir} {self.stagedir}", shell=True)
+        self.code_dir = os.path.join(self.stagedir, "EOR_Code")
+        subprocess.run(f"cp -R {self.data_dir} {self.stagedir}", shell=True)
+        self.data_dir = os.path.join(self.stagedir, "EOR_Data")
+
+
+    @run_after('setup')
     def build_singularity(self):
-        if not os.path.isfile(os.path.join(self.eor_code_dir, "singularity_images/hera-pspec-mambaorg.sif")):
+        if not os.path.isfile(os.path.join(self.code_dir, "singularity_images/hera-pspec-mambaorg.sif")):
             og_dir = os.getcwd()
-            os.chdir(os.path.join(self.eor_code_dir, "singularity_images"))
+            os.chdir(os.path.join(self.code_dir, "singularity_images"))
             subprocess.run(f"singularity build hera-pspec-mambaorg.sif hera-pspec-mambaorg.def", shell=True)
             os.chdir(og_dir)
 
-    @run_before('setup')
+    @run_after('setup')
     def download_data(self):
-        data_set = os.path.join(self.eor_data_dir, "NF_HERA_Dipole_power_beam_healpix.fits")
+        data_set = os.path.join(self.data_dir, "NF_HERA_Dipole_power_beam_healpix.fits")
         if not os.path.isfile(data_set):
             file = f"https://object.arcus.openstack.hpc.cam.ac.uk/swift/v1/AUTH_7ac3c0a502cd46c783b2128116165566/microbench_data/EoR/NF_HERA_Dipole_power_beam_healpix.fits"
             file_name = data_set
@@ -56,10 +66,10 @@ class MicrobenchEOR(rfm.RunOnlyRegressionTest):
         os.mkdir(os.path.join(self.outputdir, "outputs"))
         self.executable_opts = [
             "run",
-            "--bind", f"{self.eor_data_dir}:/data",
+            "--bind", f"{self.data_dir}:/data",
             "--bind", f"{self.outputdir}:/project",
-            os.path.join(self.eor_code_dir, 'singularity_images/hera-pspec-mambaorg.sif'),
-            os.path.join(self.eor_code_dir, "scripts/pspec_params_micro.yaml")
+            os.path.join(self.code_dir, 'singularity_images/hera-pspec-mambaorg.sif'),
+            os.path.join(self.code_dir, "scripts/pspec_params_micro.yaml")
         ]
 
     @run_after('run')
@@ -74,7 +84,7 @@ class MicrobenchEOR(rfm.RunOnlyRegressionTest):
             else:
                 return False
 
-    @run_before("performance")
+    @run_after("sanity")
     def output_list_dict(self):
         """
         In order to use the database handler perflog 'swiftdb', self.output_dict_list must be defined.
@@ -109,14 +119,14 @@ class MicrobenchEOR(rfm.RunOnlyRegressionTest):
         ]
         print(self.output_dict_list)
 
-    @performance_function('notAmetric')
-    def dont_send_confluence(self):
-        return 1
+#    @performance_function('notAmetric')
+#    def dont_send_confluence(self):
+#        return 1
 
-    @run_after('performance')
-    def free_space(self):
-        og_dir = os.getcwd()
-        os.chdir(os.path.join(self.eor_code_dir, "singularity_images"))
-        subprocess.run(f"rm -f hera-pspec-mambaorg.sif", shell=True)
-        subprocess.run(f"rm -f {os.path.join(self.eor_data_dir, 'NF_HERA_Dipole_power_beam_healpix.fits')}", shell=True)
-        os.chdir(og_dir)
+#    @run_after('performance')
+#    def free_space(self):
+#        og_dir = os.getcwd()
+#        os.chdir(os.path.join(self.code_dir, "singularity_images"))
+#        subprocess.run(f"rm -f hera-pspec-mambaorg.sif", shell=True)
+#        subprocess.run(f"rm -f {os.path.join(self.data_dir, 'NF_HERA_Dipole_power_beam_healpix.fits')}", shell=True)
+#        os.chdir(og_dir)

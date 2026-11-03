@@ -1,8 +1,6 @@
 # moved from utils.py to separate the pandas dependency
 from time import sleep
-
 from .utils import *
-
 import pandas as pd
 
 import os, io, re
@@ -141,6 +139,7 @@ def tabulate_last_perf(test, index, perf_var, root='../../perflogs'):
 
     return df
 
+
 # Functions and class for handling, updating and reading a swift object store saved sql database using sqlite.
 def get_database(
         container : str,
@@ -167,6 +166,7 @@ def get_database(
         conn.close()
     sleep(1)
 
+
 def put_database(
         container : str,
         db_file : str,
@@ -188,6 +188,7 @@ def put_database(
         print(f"db_file={db_file}")
     finally:
         conn.close()
+
 
 class DatabaseConnection:
     def __init__(
@@ -314,6 +315,7 @@ def create_plot(data_frame, test_name):
 
     return fig
 
+
 def upload_plot(confluence_obj, page_id: str, filename: str, fig, table_name: str = None):
     # Save plot to buffer
     buf = io.BytesIO()
@@ -348,6 +350,7 @@ def upload_plot(confluence_obj, page_id: str, filename: str, fig, table_name: st
     except:
         pass
 
+
 def update_table(page_body: str, table_name: str, content: list[dict]) -> str:
     soup = BeautifulSoup(page_body, "html.parser")
 
@@ -370,6 +373,7 @@ def update_table(page_body: str, table_name: str, content: list[dict]) -> str:
 
             return str(soup)
     raise ValueError(f"Table '{table_name}' not found in page body")
+
 
 def build_table(table_name: str, content: list[dict]) -> str:
     if not content:
@@ -396,6 +400,7 @@ def wrap_in_expand(title: str, inner_html: str) -> str:
         f'<ac:rich-text-body>{inner_html}</ac:rich-text-body>'
         f'</ac:structured-macro>'
     )
+
 
 def parse_system_partition(system_partition):
     parts = system_partition.split(" - ")

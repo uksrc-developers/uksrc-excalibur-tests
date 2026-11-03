@@ -9,15 +9,17 @@ from reframe.core.builtins import sanity_function, parameter, run_before, run_af
 
 from astropy.io import fits
 
+from benchmarks.modules.utils import ContainerTest
+
+
 @rfm.simple_test
-class MicrobenchMULTIWAVE(rfm.RunOnlyRegressionTest):
+class MicrobenchMULTIWAVE(ContainerTest):
     bench_name="MicrobenchMULTIWAVE"
     valid_systems = ['*']
     valid_prog_environs = ['default']
 
-    multiwave_code_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "MULTIWAVE_Code")
-    multiwave_data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "MULTIWAVE_Data")
-    os.makedirs(multiwave_data_dir, exist_ok=True)
+    code_dir = ""
+    data_dir = ""
 
     tasks = parameter([1])
     num_tasks_per_node = 1
@@ -27,28 +29,35 @@ class MicrobenchMULTIWAVE(rfm.RunOnlyRegressionTest):
 
     output_dict_list = []
 
-    @run_before('setup')
+    @run_after('setup')
+    def copy_dirs_stage(self):
+        self.code_dir = os.path.join(self.stagedir, "MULTIWAVE_Code")
+        os.makedirs(self.code_dir, exist_ok=True)
+        self.data_dir = os.path.join(self.stagedir, "MULTIWAVE_Data")
+        os.makedirs(self.data_dir, exist_ok=True)
+
+    @run_after('setup')
     def download_code(self):
-        if not os.path.isfile(os.path.join(self.multiwave_code_dir, "singularity_images/pybdsf.sif")):
+        if not os.path.isfile(os.path.join(self.code_dir, "singularity_images/pybdsf.sif")):
             subprocess.run(
-                f"git clone https://github.com/uksrc-developers/MW-sourcefind.git {self.multiwave_code_dir}",
+                f"git clone https://github.com/uksrc-developers/MW-sourcefind.git {self.code_dir}",
                 shell=True)
             subprocess.run(
-                f"mkdir {os.path.join(self.multiwave_code_dir, 'singularity_images')}",
+                f"mkdir {os.path.join(self.code_dir, 'singularity_images')}",
                 shell=True
             )
             subprocess.run(
-                    f"mv {os.path.join(self.multiwave_code_dir, 'pybdsf.singularity')} {os.path.join(self.multiwave_code_dir, 'singularity_images/pybdsf.singularity')}",
+                    f"mv {os.path.join(self.code_dir, 'pybdsf.singularity')} {os.path.join(self.code_dir, 'singularity_images/pybdsf.singularity')}",
                 shell=True
             )
             subprocess.run(
-                f"singularity build {os.path.join(self.multiwave_code_dir, 'singularity_images/pybdsf.sif')} {os.path.join(self.multiwave_code_dir, 'singularity_images/pybdsf.singularity')}",
+                f"singularity build {os.path.join(self.code_dir, 'singularity_images/pybdsf.sif')} {os.path.join(self.code_dir, 'singularity_images/pybdsf.singularity')}",
                 shell=True
             )
 
-    @run_before('setup')
+    @run_after('setup')
     def download_data(self):
-        data_set = os.path.join(self.multiwave_data_dir, "low-mosaic-blanked.fits")
+        data_set = os.path.join(self.data_dir, "low-mosaic-blanked.fits")
         if not os.path.isfile(data_set):
             file = f"https://lofar-surveys.org/public/DR2/mosaics/P000+23/low-mosaic-blanked.fits"
             file_name = data_set
@@ -59,7 +68,7 @@ class MicrobenchMULTIWAVE(rfm.RunOnlyRegressionTest):
         self.prerun_cmds = [
             f"echo '#!/bin/bash' >> {self.outputdir}/ssh_job.sh",
             f"echo 'sourcefind.py --intfile low-mosaic-blanked.fits' >> {self.outputdir}/ssh_job.sh",
-            f"cp {self.multiwave_data_dir}/low-mosaic-blanked.fits {self.outputdir}/low-mosaic-blanked.fits",
+            f"cp {self.data_dir}/low-mosaic-blanked.fits {self.outputdir}/low-mosaic-blanked.fits",
             f"cd {self.outputdir}",
             f"echo \"Workflow start: $(date '+%Y-%m-%d %H:%M:%S')\" > {self.outputdir}/output.log"
         ]
@@ -69,7 +78,7 @@ class MicrobenchMULTIWAVE(rfm.RunOnlyRegressionTest):
         os.mkdir(os.path.join(self.outputdir, "logs"))
         self.executable_opts = [
             "exec",
-            os.path.join(self.multiwave_code_dir, "singularity_images/pybdsf.sif"),
+            os.path.join(self.code_dir, "singularity_images/pybdsf.sif"),
             f"bash",
             os.path.join(self.outputdir, "ssh_job.sh")
         ]

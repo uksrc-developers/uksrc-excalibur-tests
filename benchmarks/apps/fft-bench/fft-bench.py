@@ -5,7 +5,7 @@ import reframe.utility.sanity as sn
 
 import reframe as rfm
 from reframe.core.backends import getlauncher
-from reframe.core.builtins import sanity_function, parameter, run_before, run_after, performance_function
+from reframe.core.builtins import sanity_function, parameter, run_before, run_after, performance_function, variable
 
 from benchmarks.modules.utils import SpackTest
 
@@ -18,12 +18,17 @@ class FftBenmchmarkBase(SpackTest):
     # partition which has the named feature, `-feature` is a partition which
     # does not have the named feature.  This is a CPU-only benchmark, so we use
     # `-gpu` to exclude GPU partitions.
+    bench_name = "FFT_Bench"
+    output_dict_list = []
     valid_systems = ['*']
     valid_prog_environs = ['default']
     tasks = parameter([1])
     num_tasks_per_node = 1
     cpus_per_task = parameter([16])
     time_limit = '2h'
+    container_path = variable(str, value="/opt/uksrc-excalibur-tests")
+    transform_count = variable(str, value=NUMBER_OF_TRANSFORMS)
+    repeat_count = variable(str, value=NUMBER_OF_REPEATS)
 
     executable = 'FFT_Bench'
 
@@ -35,17 +40,15 @@ class FftBenmchmarkBase(SpackTest):
         }
     }
 
-    fft_output_file = "./default.txt"
+    output_file = "default.txt"
 
-    def __init__(self):
-        self.bench_name = "FFT_Bench"
-        self.output_dict_list = []
+    @run_before('setup')
+    def set_container_cmd(self):
+        import inspect
+        path = inspect.getfile(type(self))
+        self.container_cmd = f'reframe --system=default -c {self.container_path}/{path[path.find("benchmarks/apps"):]} -n {type(self).__name__} -S {type(self).__name__}.transform_count={self.transform_count} -S {type(self).__name__}.repeat_count={self.repeat_count} -r'
 
-    @run_before('run')
-    def replace_launcher(self):
-        self.job.launcher = getlauncher('local')()
-
-    @run_after('setup')
+    @run_before('setup')
     def setup_variables(self):
         self.num_tasks = self.tasks
         self.num_cpus_per_task = self.cpus_per_task
@@ -60,7 +63,7 @@ class FftBenmchmarkBase(SpackTest):
 
     @sanity_function
     def validate(self):
-        return sn.assert_true(os.path.isfile(self.stagedir + '/' + self.fft_output_file))
+        return sn.assert_true(os.path.isfile(self.outputdir + '/' + self.output_file))
 
     @run_before("performance")
     def output_list_dict(self):
@@ -73,7 +76,7 @@ class FftBenmchmarkBase(SpackTest):
         """
         pattern = r'(?P<Library>\S+), (?P<Mem_Size>\S+), (?P<ExecutionTime>\S+),'
         output_list = sn.extractall(pattern,
-                                    pathlib.Path(self.stagedir) / self.fft_output_file,
+                                    pathlib.Path(self.outputdir) / self.output_file,
                                     ['Library', 'Mem_Size', 'ExecutionTime'],
                                     [str, float, float])
         time_of_test = str(dt.now().strftime("%Y-%m-%d-%H:%M"))
@@ -107,29 +110,19 @@ class FftBenchmarkCPU(FftBenmchmarkBase):
     # -a Run with AMD rocFFT Library
     # -r int = Number of runs to perform (min 1, max 7)
     # -c int = Number of times to repeat the transforms, for averaging times.
-    fft_output_file = './FFTW_only.txt'
-    executable_opts = ["-o", fft_output_file, "-f", "-r", NUMBER_OF_TRANSFORMS, "-c", NUMBER_OF_REPEATS]
+    output_file = 'FFTW_only.txt'
 
-    @run_after('setup')
+    @run_before('setup')
     def setup_variables(self):
         self.num_tasks = self.tasks
         self.num_cpus_per_task = self.cpus_per_task
         self.tags.add("+fftw")
         self.env_vars['OMP_NUM_THREADS'] = f'{self.num_cpus_per_task}'
 
-#@rfm.simple_test
-#class FftBenchmarkMKL(FftBenmchmarkBase):
-#    valid_systems = ['-gpu']
-#    spack_spec = 'fft-bench@0.3+mkl'
-#    fft_output_file = "./MKL_only.txt"
-#    executable_opts = ["-o", fft_output_file, "-f", "-r", NUMBER_OF_TRANSFORMS, "-c", NUMBER_OF_REPEATS]
-#
-#    @run_after('setup')
-#    def setup_variables(self):
-#        self.num_tasks = self.tasks
-#        self.num_cpus_per_task = self.cpus_per_task
-#        self.tags.add("mkl")
-#        self.env_vars['OMP_NUM_THREADS'] = f'{self.num_cpus_per_task}'
+    @run_after('setup')
+    def setting_call(self):
+        self.executable_opts = ["-o", f"{self.outputdir}/{self.output_file}", "-f", "-r", self.transform_count, "-c", self.repeat_count]
+
 
 @rfm.simple_test
 class FftBenchmarkCUDA(FftBenmchmarkBase):
@@ -137,11 +130,9 @@ class FftBenchmarkCUDA(FftBenmchmarkBase):
     spack_spec = 'fft-bench@0.3+fftw+cuda~rocm'
     spack_logfile = 'spack-build-log-cuda.txt'
     num_gpus_per_node = 1
+    output_file = 'FFTW_cuFFT.txt'
 
-    fft_output_file = 'FFTW_cuFFT.txt'
-    executable_opts = ["-o", fft_output_file, "-f", "-n", "-r", NUMBER_OF_TRANSFORMS, "-c", NUMBER_OF_REPEATS]
-
-    @run_after('setup')
+    @run_before('setup')
     def setup_variables(self):
         self.num_tasks = self.tasks
         self.num_cpus_per_task = self.cpus_per_task
@@ -149,20 +140,26 @@ class FftBenchmarkCUDA(FftBenmchmarkBase):
         self.env_vars['OMP_NUM_THREADS'] = f'{self.num_cpus_per_task}'
         self.extra_resources['gpu'] = {'num_gpus_per_node': self.num_gpus_per_node}
 
+    @run_after('setup')
+    def setting_call(self):
+        self.executable_opts = ["-o", f"{self.outputdir}/{self.output_file}", "-f", "-n", "-r", self.transform_count, "-c", self.repeat_count]
+
 @rfm.simple_test
 class FftBenchmarkROCM(FftBenmchmarkBase):
     valid_systems = ['+gpu +rocm']
     spack_spec = 'fft-bench@0.3+fftw+rocm~cuda'
     spack_logfile = 'spack-build-log-rocm.txt'
     num_gpus_per_node = 1
+    output_file = 'FFTW_rocFFT.txt'
 
-    fft_output_file = 'FFTW_rocFFT.txt'
-    executable_opts = ["-o", fft_output_file, "-f", "-a", "-r", NUMBER_OF_TRANSFORMS, "-c", NUMBER_OF_REPEATS]
-
-    @run_after('setup')
+    @run_before('setup')
     def setup_variables(self):
         self.num_tasks = self.tasks
         self.num_cpus_per_task = self.cpus_per_task
         self.tags.add("+fftw+rocm")
         self.env_vars['OMP_NUM_THREADS'] = f'{self.num_cpus_per_task}'
         self.extra_resources['gpu'] = {'num_gpus_per_node': self.num_gpus_per_node}
+
+    @run_after('setup')
+    def setting_call(self):
+        self.executable_opts = ["-o", f"{self.outputdir}/{self.output_file}", "-f", "-a", "-r", self.transform_count, "-c", self.repeat_count]

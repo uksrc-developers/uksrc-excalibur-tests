@@ -7,21 +7,19 @@ import reframe as rfm
 from reframe.core.backends import getlauncher
 from reframe.core.builtins import sanity_function, parameter, run_before, run_after, performance_function
 
+from benchmarks.modules.utils import ContainerTest
 
 @rfm.simple_test
-class MicrobenchLOFARINT(rfm.RunOnlyRegressionTest):
+class MicrobenchLOFARINT(ContainerTest):
     bench_name="MicrobenchLOFARINT"
     valid_systems = ['*']
     valid_prog_environs = ['default']
 
-    lofarint_code_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "LOFARINT_Code")
-    os.makedirs(lofarint_code_dir, exist_ok=True)
-    LINC_dir = os.path.join(lofarint_code_dir, "LINC")
-    VLBI_dir = os.path.join(lofarint_code_dir, "VLBI-cwl")
-    lofarint_data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "LOFARINT_Data")
-    os.makedirs(lofarint_data_dir, exist_ok=True)
-    vlbi_singularity_dir = os.path.join(lofarint_code_dir, "singularity_images")
-    os.makedirs(vlbi_singularity_dir, exist_ok=True)
+    code_dir = ""
+    LINC_dir = ""
+    VLBI_dir = ""
+    vlbi_singularity_dir = ""
+    data_dir = ""
 
     tasks = parameter([1])
     num_tasks_per_node = 1
@@ -37,17 +35,29 @@ class MicrobenchLOFARINT(rfm.RunOnlyRegressionTest):
 
     output_dict_list = []
 
-    @run_before('setup')
+    @run_after('setup')
+    def copy_dirs_stage(self):
+        self.code_dir = os.path.join(self.stagedir, "LOFARINT_Code")
+        os.makedirs(self.code_dir, exist_ok=True)
+        self.LINC_dir = os.path.join(self.code_dir, "LINC")
+        self.VLBI_dir = os.path.join(self.code_dir, "VLBI-cwl")
+        self.vlbi_singularity_dir = os.path.join(self.code_dir, "singularity_images")
+        os.makedirs(self.vlbi_singularity_dir, exist_ok=True)
+
+        self.data_dir = os.path.join(self.stagedir, "LOFARINT_Data")
+        os.makedirs(self.data_dir, exist_ok=True)
+
+    @run_after('setup')
     def download_linc(self):
         if not os.path.exists(self.LINC_dir):
             subprocess.run(f"git clone https://git.astron.nl/RD/LINC.git --branch releases/v5.1 {self.LINC_dir}", shell=True)
 
-    @run_before('setup')
+    @run_after('setup')
     def download_vlbi(self):
         if not os.path.exists(self.VLBI_dir):
             subprocess.run(f"git clone https://git.astron.nl/RD/VLBI-cwl.git {self.VLBI_dir}", shell=True) #, "--branch", "0.8.0", self.VLBI_dir])
 
-    @run_before('setup')
+    @run_after('setup')
     def download_singularity_image(self):
         vlbi_singularity_sif = os.path.join(self.vlbi_singularity_dir, "flocs_v6.0.0_sandybridge_sandybridge.sif")
         if not os.path.isfile(vlbi_singularity_sif):
@@ -65,17 +75,17 @@ class MicrobenchLOFARINT(rfm.RunOnlyRegressionTest):
         if not os.path.isfile(vlbi_singularity_latest_link_colon):
             subprocess.run(f"ln -s {vlbi_singularity_sif} {vlbi_singularity_latest_link_colon}", shell=True)
 
-    @run_before('setup')
+    @run_after('setup')
     def download_data(self):
-        if not os.path.isdir(os.path.join(self.lofarint_data_dir, "L693725_SB282_uv.MS")):
+        if not os.path.isdir(os.path.join(self.data_dir, "L693725_SB282_uv.MS")):
             address = "https://object.arcus.openstack.hpc.cam.ac.uk/swift/v1/AUTH_7ac3c0a502cd46c783b2128116165566/microbench_data/"
-            subprocess.run("wget -qO- {Address} | grep '^LOFARINT/' | xargs -n1 -I".format(Address=address)+"{} wget -nH --cut-dirs=5 -R 'index.html' -x -P "+"{DataDir} {Address}".format(Address=address, DataDir=self.lofarint_data_dir)+"{}", shell=True)
+            subprocess.run("wget -qO- {Address} | grep '^LOFARINT/' | xargs -n1 -I".format(Address=address)+"{} wget -nH --cut-dirs=5 -R 'index.html' -x -P "+"{DataDir} {Address}".format(Address=address, DataDir=self.data_dir)+"{}", shell=True)
             og_dir = os.getcwd()
-            os.chdir(os.path.join(self.lofarint_data_dir, "L693725_SB282_uv.MS"))
+            os.chdir(os.path.join(self.data_dir, "L693725_SB282_uv.MS"))
             subprocess.run("cat table.f3.tar.gz.* | tar xzvf -", shell=True)
             os.chdir(og_dir)
 
-    @run_after('setup')
+    @run_before('run')
     def add_prerun_cmds(self):
         self.log_dir = os.path.join(self.outputdir, 'toil/logs/')
         self.work_dir = os.path.join(self.outputdir, 'toil/work/')
@@ -95,7 +105,7 @@ class MicrobenchLOFARINT(rfm.RunOnlyRegressionTest):
             "export APPTAINER_CACHEDIR=${CWL_SINGULARITY_CACHE}",
             'export APPTAINERENV_PREPEND_PATH=${APPTAINERENV_PREPEND_PATH:-"' + self.VLBI_dir + '/scripts"}',
             'export APPTAINERENV_PYTHONPATH=${APPTAINERENV_PYTHONPATH:-"' + self.VLBI_dir + '/scripts:${PYTHONPATH}"}',
-            f"export APPTAINER_BIND={os.path.join(self.outputdir, 'toil')},{self.lofarint_code_dir}/VLBI-cwl,{self.lofarint_data_dir}",
+            f"export APPTAINER_BIND={os.path.join(self.outputdir, 'toil')},{self.code_dir}/VLBI-cwl,{self.data_dir}",
             '',
             'export TOIL_COMMAND="toil-cwl-runner '
             '--singularity '
@@ -109,7 +119,7 @@ class MicrobenchLOFARINT(rfm.RunOnlyRegressionTest):
             '--cwl-min-ram 8589934592 '
             '--bypass-file-store '
             f'{self.VLBI_dir}/workflows/setup.cwl '
-            f'{self.lofarint_data_dir}/parameters.json"',
+            f'{self.data_dir}/parameters.json"',
             '',
             'env APPTAINERENV_PREPEND_PATH="$APPTAINERENV_PREPEND_PATH" '
             'APPTAINERENV_PYTHONPATH="$APPTAINERENV_PYTHONPATH" '
@@ -124,7 +134,7 @@ class MicrobenchLOFARINT(rfm.RunOnlyRegressionTest):
             "msin": [
                 {
                     "class": "Directory",
-                    "path": os.path.join(self.lofarint_data_dir, "L693725_SB282_uv.MS")
+                    "path": os.path.join(self.data_dir, "L693725_SB282_uv.MS")
                 }
             ],
             "linc": {
@@ -138,29 +148,29 @@ class MicrobenchLOFARINT(rfm.RunOnlyRegressionTest):
             },
             "delay_calibrator": {
                 "class": "File",
-                "path": os.path.join(self.lofarint_data_dir, "models/delay_calibrators.csv")
+                "path": os.path.join(self.data_dir, "models/delay_calibrators.csv")
             },
             "configfile": {
                 "class": "File",
-                "path": os.path.join(self.lofarint_data_dir, "models/facetselfcal_config.txt")
+                "path": os.path.join(self.data_dir, "models/facetselfcal_config.txt")
             },
             "selfcal": {
                 "class": "Directory",
-                "path": os.path.join(self.lofarint_data_dir, "models/lofar_facet_selfcal/")
+                "path": os.path.join(self.data_dir, "models/lofar_facet_selfcal/")
             },
             "h5merger": {
                 "class": "Directory",
-                "path": os.path.join(self.lofarint_data_dir, "models/lofar_helpers/")
+                "path": os.path.join(self.data_dir, "models/lofar_helpers/")
             },
             "solset": {
                 "class": "File",
-                "path": os.path.join(self.lofarint_data_dir, "models/cal_solutions.h5")
+                "path": os.path.join(self.data_dir, "models/cal_solutions.h5")
             }
         }
         # Serializing json
         json_object = json.dumps(json_for_test, indent=4)
         # Writing to sample.json
-        with open(os.path.join(self.lofarint_data_dir, "parameters.json"), "w") as outfile:
+        with open(os.path.join(self.data_dir, "parameters.json"), "w") as outfile:
             outfile.write(json_object)
 
     @run_before('run')
@@ -179,7 +189,7 @@ class MicrobenchLOFARINT(rfm.RunOnlyRegressionTest):
             "--cwl-min-ram", "8589934592",
             "--bypass-file-store",
             f"{self.VLBI_dir}/workflows/setup.cwl",
-            f"{self.lofarint_data_dir}/parameters.json"
+            f"{self.data_dir}/parameters.json"
         ]
 
     @run_after('run')

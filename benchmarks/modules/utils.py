@@ -7,6 +7,7 @@ import sys
 import pprint
 
 import reframe as rfm
+from reframe.core.builtins import run_before, variable, run_after
 from reframe.core.exceptions import BuildSystemError, CommandLineError
 from reframe.core.logging import getlogger
 from reframe.utility.osext import run_command
@@ -44,7 +45,6 @@ def get_sys_param(param):
         if param in params:
             results[syspart] = params[param]
     return results
-
 
 def get_sysinfo(sys_part):
     """ Get system data from SYSFILE for a given system+partition.
@@ -240,7 +240,78 @@ def identify_build_environment(current_partition):
     return env_dir, cp_dir, subdir
 
 
-class SpackTest(rfm.RegressionTest):
+class ContainerTest(rfm.RegressionTest, special=True):
+    '''Base class for tests that can be submitted as container jobs.
+
+    When running on a partition whose scheduler has `container_scheduler = True`,
+    the compile phase is skipped and the test is submitted as a container job
+    directly. On all other schedulers, the test runs normally through the full
+    ReFrame pipeline.
+
+    Subclasses should set `container_image` and `container_cmd` as needed.
+    If not set, `container_image` defaults to the base UKSRC image and
+    `container_cmd` defaults to running the current test via ReFrame inside
+    the container.
+
+    Example usage in a test:
+        class MyTest(ContainerTest):
+            container_image = 'registry.example.com/my-image:latest'
+            container_cmd = 'bash /opt/run.sh'
+    '''
+
+    #: The container image to use when submitting to a container scheduler.
+    container_image = variable(
+        str,
+        value='spsrc26.iaa.csic.es/srcnet-benchmarks/uksrc_excalibur_tests_base:latest',
+        loggable=True,
+    )
+
+    #: The command to run inside the container. Defaults to running the
+    #: current test via ReFrame inside the container.
+    container_cmd = variable(str, loggable=True)
+
+    env_variables = variable(dict, value={}, loggable=True)
+
+    def __init__(self):
+        self._is_container_job = False
+        import inspect
+        path = inspect.getfile(type(self))
+        self.container_cmd = f'reframe --system=default -c /opt/uksrc-excalibur-tests/{path[path.find("benchmarks/apps"):]} -n {self.name[:self.name.find(" ")]} -r && cat {self.output_file}'
+
+
+    @run_after('setup')
+    def _intercept_for_container_scheduler(self):
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            self._is_container_job = True
+            self.job.container_image = self.container_image
+            self.job.container_cmd = self.container_cmd
+            self.job.env_variables = self.env_variables
+            self.job.outputdir = self.outputdir
+
+    @run_before('run')
+    def _create_output_file(self):
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            open(os.path.join(self.outputdir, "rfm_job.out"), 'w').close()
+            open(os.path.join(self.outputdir, "rfm_job.err"), 'w').close()
+
+
+    def compile(self):
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            return
+        super().compile()
+
+    def compile_wait(self):
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            return
+        super().compile_wait()
+
+    def compile_complete(self):
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            return True
+        return super().compile_complete()
+
+
+class SpackTest(ContainerTest): #(rfm.RegressionTest):
     build_system = 'Spack'
     spack_spec = variable(str, value='', loggable=True)
     spack_spec_dict = variable(str, value='', loggable=True)
@@ -248,13 +319,14 @@ class SpackTest(rfm.RegressionTest):
 
     @run_before('compile')
     def setup_spack_environment(self):
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            return
         env_dir, cp_dir, subdir = identify_build_environment(
             self.current_partition)
         dest = os.path.join(self.stagedir, 'spack_env')
         self.build_system.environment = os.path.join(dest, subdir)
         # Base name and full path of common settings file.
-        spack_envs = os.path.realpath(os.path.join(os.path.dirname(__file__),
-                                                   '..', 'spack'))
+        spack_envs = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'spack'))
         common_base = 'common.yaml'
         common = os.path.realpath(os.path.join(spack_envs, common_base))
         self.prebuild_cmds = [
@@ -280,7 +352,6 @@ class SpackTest(rfm.RegressionTest):
         # environment can be faithfully reproduced later.
         self.keep_files.append(os.path.realpath(os.path.join(self.build_system.environment, 'spack.lock')))
 
-
     @run_after('run')
     def get_full_variants(self):
         with osext.change_dir(self.stagedir):
@@ -288,15 +359,15 @@ class SpackTest(rfm.RegressionTest):
             # convert all single quotes to double quotes since JSON does not recognise it
             self.spack_spec_dict = self.spack_spec_dict.replace("'", "\"")
 
-
     @run_before('compile')
     def setup_build_system(self):
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            return
         # The `self.spack_spec` attribute is the user-facing and loggable
         # variable we use for setting the Spack spec, but then we need to
         # forward its value to `self.build_system.specs`, which is the way to
         # inform ReFrame which Spack specs to use.
         self.build_system.specs.append(self.spack_spec)
-
 
     @run_before('compile')
     def add_profiler(self):
