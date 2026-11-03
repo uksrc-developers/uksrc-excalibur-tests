@@ -1,0 +1,28 @@
+name: h1c-idr3
+channels:
+  - conda-forge
+dependencies:
+  - aipy
+  - astropy
+  - astropy-healpix
+  - cartopy
+  - git
+  - gitpython
+  - ipython
+#  - jax
+  - jinja2
+  - matplotlib
+  - multiprocess
+  - numpy
+  - pandas
+  - pip
+  - python
+  - pyuvdata==2.4.5
+  - rich
+  - scipy=1.13
+  - scikit-learn
+  - six
+  - pip:
+    - hera-calibration==3.6.1
+    - hera-pspec==0.4.0
+    - git+https://github.com/nkern/simpleQE

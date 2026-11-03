@@ -46,8 +46,6 @@ def spack_root_to_path():
 # _json_and_send allows for the sending of data to a Confluence table.
 def _json_and_send(record, extras, ignore_keys):
     try:
-        content = getattr(record, '__rfm_check__', None).output_dict_list
-        bench_name = getattr(record, '__rfm_check__', None).bench_name
         with open(Path(__file__).parent / ".env") as f:
             for line in f:
                 line = line.strip()
@@ -56,15 +54,21 @@ def _json_and_send(record, extras, ignore_keys):
                 key, value = line.split("=", 1)
                 key = key.strip()
                 os.environ[key] = value.strip().strip('"').strip("'")
-        for output in content:
-            send_to_table(
-                os.getenv("ATLASSIAN_SITE"),
-                os.getenv("CONFLUENCE_SPACE_ID"),
-                os.getenv("ATLASSIAN_EMAIL"),
-                os.getenv("ATLASSIAN_API_TOKEN"),
-                bench_name,
-                output
-            )
+        bench_name = getattr(record, '__rfm_check__', None).bench_name
+        perfvars = record.__dict__.get('check_perfvars', {})
+        if isinstance(perfvars, dict) and 'dummy_perf' in perfvars:
+            content = getattr(record, '__rfm_check__', None).output_dict_list
+            for output in content:
+                send_to_table(
+                    os.getenv("ATLASSIAN_SITE"),
+                    os.getenv("CONFLUENCE_SPACE_ID"),
+                    os.getenv("ATLASSIAN_EMAIL"),
+                    os.getenv("ATLASSIAN_API_TOKEN"),
+                    bench_name,
+                    output
+                )
+        else:
+            print("Else in isinstance(perfvars)")
     except Exception as e:
         # Avoid crashing ReFrame on logging paths; record and continue.
         print(f"[perflog delegate] ERROR: {e}")
@@ -722,7 +726,7 @@ site_configuration = {
                 {
                     'name': 'default',
                     'scheduler': 'local',
-                    'launcher': 'mpirun',
+                    'launcher': 'local',
                     'environs': ['default'],
                 },
             ]

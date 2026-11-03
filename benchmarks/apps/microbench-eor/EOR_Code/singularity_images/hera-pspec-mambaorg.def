@@ -1,0 +1,37 @@
+bootstrap: docker
+from: mambaorg/micromamba
+
+%environment
+    export SINGULARITY_SHELL=/bin/bash
+    export DATA_DIR="/data/"
+    export HERA_DIR="/opt/hera"
+    export PYTHON_SCRIPT=$HERA_DIR"/pspec_pipe.py"
+
+%files
+    micromamba.sh /etc/profile.d/micromamba.sh
+    ./environment.yaml /opt/hera/environment.yaml
+    ./pspec_pipe.py /opt/hera/pspec_pipe.py
+
+%post
+    env_yaml="/opt/hera/environment.yaml"
+    /usr/bin/micromamba create --yes --quiet --file $env_yaml
+#    pip install of hera_pspec is overwriting pyuvdata==2.4.5 from
+#       the environment.yaml file with the latest pyuvdata on PyPi (3.0.0)
+#       but we need to pyuvdata==2.4.5 to avoid issues with future_array_shapes
+    /opt/conda/envs/h1c-idr3/bin/python -m pip uninstall --yes pyuvdata==3.2.4
+    /usr/bin/micromamba uninstall --name h1c-idr3 --yes --quiet pyuvdata
+    /usr/bin/micromamba install --name h1c-idr3 -c conda-forge --yes --quiet pyuvdata==2.4.5
+    /usr/bin/micromamba clean --all --yes
+    /opt/conda/envs/h1c-idr3/bin/python -m pip list
+    echo ". /etc/profile.d/micromamba.sh" >> /etc/bash.bashrc
+    echo "micromamba activate $(head -n 1 $env_yaml | cut -f 2 -d ' ')" >> /etc/bash.bashrc
+
+%runscript
+    PYTHON="/opt/conda/envs/h1c-idr3/bin/python"
+    echo "python: $PYTHON"
+
+    echo "Files in $DATA_DIR: $(ls -1 $DATA_DIR | wc -l)"
+    CLA="$@"
+    echo "Executing command:"
+    echo "$PYTHON $PYTHON_SCRIPT $CLA"
+    $PYTHON $PYTHON_SCRIPT $CLA

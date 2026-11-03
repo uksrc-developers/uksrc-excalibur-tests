@@ -23,7 +23,6 @@ class FfftBenmchmarkBase(SpackTest):
     tasks = parameter([1])
     num_tasks_per_node = 1
     cpus_per_task = parameter([16])
-    #sourcesdir = os.path.dirname(__file__)
     time_limit = '2h'
 
     executable = 'FFT_Bench'
@@ -84,7 +83,7 @@ class FfftBenmchmarkBase(SpackTest):
             ]
         return
 
-    @performance_function('s')
+    @performance_function('notAmetric')
     def dummy_perf(self):
         return 1
 
@@ -94,7 +93,6 @@ class FftBenchmarkCPU(FfftBenmchmarkBase):
     valid_systems = ['*']
     spack_spec = 'fft-bench@0.3+fftw~cuda~rocm'
     spack_logfile = 'spack-build-log-fftw.txt'
-
     # Arguments to pass to the program above to run the benchmarks.
     # -o str = Path to outputfile
     # -f Run with FFTW3 Library

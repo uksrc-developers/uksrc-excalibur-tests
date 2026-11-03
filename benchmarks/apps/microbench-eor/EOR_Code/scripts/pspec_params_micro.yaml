@@ -1,0 +1,143 @@
+# pspec_pipe.yaml
+#
+# hera_pspec IDR2.1 pipeline
+# configuration file
+#
+# Note: only strings, booleans, integers, floats,
+# lists, and lists of lists may be specified here.
+# When PSpecData parameters have required type None
+# use 'None' here, and for list of tuples,
+# use list of lists here.
+
+#---------------------------------------------------------------
+# IO Parameters
+#---------------------------------------------------------------
+io :
+  work_dir : '/project/outputs' # directory to work in
+  out_dir : '/project/outputs' # directory for output; root is work_dir
+  logfile : 'pspipe_out_micro.log'  # logfile; root is work_dir
+  errfile : 'pspipe_err_micro.log' # error file; root is work_dir
+  joinlog : True       # redirect error output into logfile
+  overwrite : True     # overwrite
+  verbose : True        # report feedback to standard output
+
+#---------------------------------------------------------------
+# Analysis Parameters
+#---------------------------------------------------------------
+analysis :
+  run_diff        : False       # Run visibility data difference
+  run_pspec       : True        # Run power spectrum estimation
+  run_noise_err   : False        # Run P_N errorbars given Tsys
+  run_bootstrap   : False        # Run bootstrapping for errorbars
+  multiproc       : False        # use multiprocess module
+  nproc           : 1           # number of processes to spawn
+  maxiter         : 1
+
+#---------------------------------------------------------------
+# Data Parameters
+#---------------------------------------------------------------
+data :
+  # data root dir is an absolute path
+  data_root : '/data/'  # Path to data inside the container
+
+  # data template basename: optionally with {group} and/or {pol} fields
+  data_template : 'reduced_test_data.uvh5'
+
+  # std template basename: optionally with {grup} and/or {pol} fields
+  std_template : None
+
+  # datafile patterns to exclude from list of files
+  exclude_patterns : None
+
+  # data groups to cross multiply
+  group_pair : [None, None]
+
+  # Polarizations to cross multiply
+  pol_pairs :
+    - ['xx', 'xx']
+
+  # file type
+  filetype : 'uvh5'
+
+  # 1. full path to a single calfits or
+  # 2. extension to data_template
+  cal_ext : None #"data/zen.grp1.of1.LST.1.57393.HH.OCRSLPXT.spw1.refcal.calfits"
+  cal_flag : False  # propagate calibration flags to data
+
+  # baseline type restriction in length (meters) and angle (degrees)
+  # Warning: this uses all telescope antennas, not data antennas
+  # which will cause an antenna-down-selected file to fail
+  bl_len_range : [14, 1000]
+  bl_deg_range : [0, 180]
+
+  # select baselines manually. This overrides bl_len and bl_deg above
+  bls : None
+
+  # denote bad antennas
+  xants : None
+
+  # if True, sort files by LST of the first integration, using lst_branch_cut to decide where to wrap
+  lst_sort : False
+  # value in radians for branchcut for how to order LSTs. Only used if lst_sort is True. Default 0.0.
+  lst_branch_cut : 4.70
+
+#---------------------------------------------------------------
+# Algorithm Parameters
+#---------------------------------------------------------------
+algorithm :
+
+  # jacknife data difference
+  diff :
+    split_type : "antenna"
+
+  # pspec pipeline
+  pspec :
+    outfname : "pspec.vis-eor-fgs.h5"
+    groupname : "stokespol"
+    output_by_red : True
+    input_data_weight : "identity"
+    norm : "I"
+    taper : "bh"
+    beam : "/data/NF_HERA_Dipole_power_beam_healpix.fits"  # Path to the beam inside the container
+    cosmo : None
+    spw_ranges :
+      - [0, 32]
+    n_dlys : None
+    cov_model : None #'foreground_dependent'
+    Jy2mK : True
+    interleave_times : True
+    rephase_to_dset : 0
+    trim_dset_lsts : False
+    broadcast_dset_flags : False
+    time_thresh : 0.2
+    Nblps_per_job : 30
+    exclude_auto_bls : False
+    exclude_cross_bls : False
+    exclude_permutations : False
+    store_window : False
+    tsleep : 10.0
+    maxiter : 10
+
+  # P_N calculation
+  noise_err :
+    psc_name : "pspec.vis-eor-fgs.h5"  # a PSpecContainer file
+    error_type : ["P_N", "P_SN"]
+    precomp_P_N : None
+    group_name : 'stokespol'  # group name in psc to operate on
+    spectra_names : None  # list of spectra names within group to operate on, None is all
+    beam : "/data/NF_HERA_Dipole_power_beam_healpix.fits"  # Path to the beam inside the container
+    auto_file : "reduced_test_data.uvh5"  # a uvh5 file or wildcard path holding autocorrelations with data_root
+    cal_ext : None  # same function as cal_ext in "data"
+    output_Tsys_file : "reduced_test_data._autos.uvh5"  # output file for antenna Tsys, if None don't write output
+
+# bootstrap pipeline
+  bootstrap :
+    psc_name : "pspec_micro.h5"
+    time_avg : True
+    Nsamples : 100
+    seed : 10
+    normal_std : True
+    robust_std : True
+    cintervals : None
+    keep_samples : False
+    bl_error_tol : 1.0
