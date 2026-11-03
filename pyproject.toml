@@ -31,6 +31,7 @@ dependencies = [
     "keystoneauth1>=5.14.0",
     "python-swiftclient>=4.10.0",
     "toil[cwl,wdl]>=9.4.1",
+    "astropy[recommended]>=7.2.0",
 ]
 
 [project.optional-dependencies]

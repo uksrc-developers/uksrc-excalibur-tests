@@ -366,7 +366,7 @@ class CanfarJobScheduler(JobScheduler):
     Usage in site_configuration partitions:
         {
             'name': '<partition name>',
-            'scheduler': 'k8s',
+            'scheduler': 'canfar',
             'launcher': 'local',
             'access': [
                 '--image=<image>:latest',
@@ -412,17 +412,20 @@ class CanfarJobScheduler(JobScheduler):
             )[0]
             print(f"Session ID = {job._jobid}")
         except:
+            print("Error in CanfarJobScheduler.submit")
             raise JobError
         job._submit_time = time.time()
         job._state = self.connection_session.info(job._jobid)[0]["status"]
         self.log(f'submitted canfar job: {job._jobid}')
+        open(os.path.join(job.outputdir, job.stdout), 'w').close()
+        open(os.path.join(job.outputdir, job.stderr), 'w').close()
 
     def cancel(self, job):
         #self.connection_session.destroy(job._jobid)
         job._cancelled = True
 
     def wait(self, job):
-        intervals = itertools.cycle([1, 2, 3])
+        intervals = itertools.cycle([5, 10, 20])
         while not self.finished(job):
             self.poll(job)
             time.sleep(next(intervals))
@@ -431,35 +434,41 @@ class CanfarJobScheduler(JobScheduler):
         if job._state != 'Completed' and job._state != 'Failed':
             return False
         return True
+
     def poll(self, *jobs):
         for job in jobs:
             if job is not None and job._jobid is not None:
                 self._poll_job(job)
 
+
     def _poll_job(self, job):
-        status = self.connection_session.info(job._jobid)[0]["status"]
+        try:
+            status = self.connection_session.info(job._jobid)[0]["status"]
+        except:
+            if "The read operation timed out" in self.connection_session.info(job._jobid):
+                return
+            print("Unable to get status.")
+            print(f"Job ID = {job._jobid}")
+            print(f"connection_session.info = {self.connection_session.info(job._jobid)}")
+            status = "Failed"
 
         job._state = status
         if status == 'Completed':
             job._exitcode = 0
             self._retrieve_logs(job)
             return
-        if status == 'Failed':
+        elif status == 'Failed':
             job._exitcode = 1
             self._retrieve_logs(job)
             return
-
-        job._state = status
-
         if (job._state == 'Pending' and job.max_pending_time
                 and time.time() - job.submit_time >= job.max_pending_time):
             self.cancel(job)
             job._exception = JobError('maximum pending time exceeded', job.jobid)
+            return
 
     def _retrieve_logs(self, job):
         if job._state != "Completed" and job._state != "Failed":
-            open(os.path.join(job.outputdir, job.stdout), 'w').close()
-            open(os.path.join(job.outputdir, job.stderr), 'w').close()
             return
 
         logs = self.connection_session.logs(job._jobid)[job._jobid]
@@ -467,8 +476,12 @@ class CanfarJobScheduler(JobScheduler):
         if job._state == "Completed":
             with open(os.path.join(job.outputdir, job.stdout), 'w') as f:
                 f.write(logs)
+            with open(os.path.join(job.outputdir.replace('/output/', '/stage/'), job.stdout), 'w') as f:
+                f.write(logs)
         else:
             with open(os.path.join(job.outputdir, job.stderr), 'w') as f:
+                f.write(logs)
+            with open(os.path.join(job.outputdir.replace('/output/', '/stage/'), job.stderr), 'w') as f:
                 f.write(logs)
 
 

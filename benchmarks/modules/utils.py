@@ -264,7 +264,7 @@ class ContainerTest(rfm.RegressionTest, special=True):
     #: The container image to use when submitting to a container scheduler.
     container_image = variable(
         str,
-        value='spsrc26.iaa.csic.es/srcnet-benchmarks/uksrc_excalibur_tests_base:0.1.1',
+        value='spsrc26.iaa.csic.es/srcnet-benchmarks/uksrc_excalibur_tests_base:0.1.2',
         loggable=True,
     )
 
@@ -290,6 +290,109 @@ class ContainerTest(rfm.RegressionTest, special=True):
             self.job.container_cmd = self.container_cmd
             self.job.env_variables = self.env_variables
             self.job.outputdir = self.outputdir
+
+    @run_before('compile')
+    def add_profiler(self):
+        if self.profiler:
+            # Command to use to view profiling traces
+            viewer_cmd = None
+            # Arguments to pass to the viewer
+            viewer_args = ''
+            if self.profiler == 'advisor-roofline':
+                pkg_spec = 'intel-oneapi-advisor'
+                # Spack package providing the profiler
+                self.build_system.specs.append(pkg_spec)
+                # Name of output directory
+                output_path = 'advisor-roofline'
+                # Prepend advisor call to the executable
+                self.executable = f'advisor -collect roofline --project-dir={output_path} -- ' + self.executable
+                # Save the output directory
+                self.keep_files.append(output_path)
+                viewer_cmd = 'advisor-gui'
+                viewer_args = f'{self.outputdir}/{output_path}'
+            elif self.profiler == 'nsight':
+                pkg_spec = 'nvidia-nsight-systems'
+                # Spack package providing the profiler
+                self.build_system.specs.append(pkg_spec)
+                # Name of output file
+                output_path = 'nsys-trace'
+                # Prepend nsys call to the executable
+                self.executable = f'nsys profile --trace=cuda,mpi,nvtx,openmp,osrt,opengl,syscall --output {output_path} ' + self.executable
+                # Save the output file
+                self.keep_files.append(f'{output_path}.nsys-rep')
+                viewer_cmd = 'nsys-ui'
+                viewer_args = f'{self.outputdir}/{output_path}.nsys-rep'
+            elif self.profiler == 'vtune':
+                pkg_spec = 'intel-oneapi-vtune'
+                # Spack package providing the profiler
+                self.build_system.specs.append(pkg_spec)
+                # Name of output directory
+                output_path = 'vtune-profiling'
+                # Prepend VTune call to the executable
+                self.executable = f'vtune -collect hotspots -r {output_path} -- ' + self.executable
+                # Save the output directory
+                self.keep_files.append(f'{output_path}*')
+                viewer_cmd = 'vtune-gui'
+                viewer_args = f'{self.outputdir}/{output_path}*'
+            elif self.profiler == 'likwid':
+                pkg_spec = 'likwid'
+                # Spack package providing the profiler
+                self.build_system.specs.append(pkg_spec)
+                # Name of output directory
+                output_path = 'likwid-profiling'
+                # Prepend VTune call to the executable
+                self.prerun_cmds += [
+                    f"export LIK_OUTPUT_DIR={os.path.join(self.outputdir, output_path)}",
+                    "mkdir ${LIK_OUTPUT_DIR}",
+                    "export LIK_OUTPUT=${LIK_OUTPUT_DIR}/likwid_performance_out.txt",
+                    f"export CPU_PER_TASK={self.num_cpus_per_task}",
+                    "export THREAD_COUNT=$(($(lscpu | awk '/Thread\(s\) per core:/ {print $4}') * CPU_PER_TASK))",
+                    "export STREAM_SIZE=$((10 * THREAD_COUNT))kB",
+                    "echo 'Scalar MFlops/s' > ${LIK_OUTPUT}",
+                    "likwid-bench -t peakflops -W N:${STREAM_SIZE}:${THREAD_COUNT} | grep 'MFlops/s:' >> ${LIK_OUTPUT}",
+                    "echo 'Scalar MByte/s' >> ${LIK_OUTPUT}",
+                    "likwid-bench -t load -W N:8GB:${THREAD_COUNT} | grep 'MByte/s:' >> ${LIK_OUTPUT}",
+                    'python -c "import pyprofqueue.profilers.likwid as lik; lik.create_custom_group();"',
+                    "export ARCHITECTURE=$(likwid-perfctr -i | awk '/CPU short:/ {print $NF}')",
+                    "mkdir -p $HOME/.likwid/groups/$ARCHITECTURE",
+                    "cp ./CUSTOM_GROUP.txt $HOME/.likwid/groups/$ARCHITECTURE/CUSTOM_GROUP.txt"
+                ]
+                self.executable = f'likwid-perfctr -g CUSTOM_GROUP -t 120s -O -f ' + self.executable + " 2> ${LIK_OUTPUT_DIR}/temp_likwid.txt > ${LIK_OUTPUT_DIR}/temp_out.txt"
+                self.postrun_cmds += [
+                    "sed -n '/^# HWThreads:/,+1p' ${LIK_OUTPUT_DIR}/temp_out.txt > ${LIK_OUTPUT_DIR}/likwid_output.txt",
+                    "sed '/^$/Q' ${LIK_OUTPUT_DIR}/temp_likwid.txt >> ${LIK_OUTPUT_DIR}/likwid_output.txt",
+                ]
+                # Save the output directory
+                self.keep_files.append(f'{output_path}*')
+                # viewer_cmd = '<>'
+                # viewer_args = f'{self.outputdir}/{output_path}*'
+            else:
+                raise CommandLineError(f'Unknown profiler {self.profiler}')
+
+            # Hack time! On ARCHER2 the home partition isn't mounted on compute
+            # nodes, but due to a longstanding upstream bug
+            # (<https://community.intel.com/t5/Intel-MPI-Library/How-to-install-beta8-without-it-getting-near-home-directory/m-p/1211465>),
+            # Intel tools want to *write* into the home directory at any cost.
+            # We trick them by setting the HOME env var to their installation
+            # directory.  Note: we use `prerun_cmds` instead of `env_vars` so
+            # that we do this only right before running the benchmark command
+            # and not also before compilation, where `spack location` wouldn't
+            # even work.  Let's hope nothing else relies on HOME being set to
+            # the actual home directory (also because it isn't accessible, you
+            # know).
+            if self.profiler in ('advisor-roofline', 'vtune') and self.current_system.name == 'archer2':
+                self.prerun_cmds.append(
+                    f'export HOME=$(spack -e {self.build_system.environment} location --install-dir {pkg_spec})')
+
+            if viewer_cmd:
+                # Print to stdout the command to use for viewing the profiling
+                # results.
+                self.postrun_cmds.append(f'''
+    if which {viewer_cmd} 2> /dev/null; then
+        echo "You can view the profiler output with the command"
+        echo "    $(which {viewer_cmd}) {viewer_args}"
+    fi''')
+
 
     @run_before('run')
     def _create_output_file(self):
@@ -334,6 +437,7 @@ class SpackTest(ContainerTest): #(rfm.RegressionTest):
         if getattr(self.current_partition.scheduler, 'container_scheduler', False):
             self.pre_container_stage = f'{self.stagedir}/rfm_job.out'
             subprocess.run(f'echo "spack_spec_dict: $(spack -e {os.path.join(dest, subdir)} python -c \'{cmd_spack_spec_dict}\')" >> {self.stagedir}/rfm_job.out', shell=True)
+            self.postrun_cmds.append(f'cat {self.stagedir}/rfm_job.out')
             return
         self.build_system.environment = os.path.join(dest, subdir)
         # Base name and full path of common settings file.
@@ -352,8 +456,8 @@ class SpackTest(ContainerTest): #(rfm.RegressionTest):
             f'(cd {cp_dir}; find . \\( -name "spack.yaml" -o -name "compilers.yaml" -o -name "packages.yaml" -o -name "upstreams.yaml" \\) -print0 | xargs -0 tar cf - | tar -C {dest} -xvf -)',
             f'spack -e {self.build_system.environment} config add "config:install_tree:root:{env_dir}/opt"',
         ]
+
         self.postrun_cmds.append(f'echo "spack_spec_dict: $(spack -e {self.build_system.environment} python -c \'{cmd_spack_spec_dict}\')" >> {self.stagedir}/rfm_job.out')
-        self.postrun_cmds.append(f'cat {self.stagedir}/rfm_job.out')
 
         # Keep the `spack.lock` file in the output directory so that the Spack
         # environment can be faithfully reproduced later.
@@ -375,75 +479,6 @@ class SpackTest(ContainerTest): #(rfm.RegressionTest):
         # forward its value to `self.build_system.specs`, which is the way to
         # inform ReFrame which Spack specs to use.
         self.build_system.specs.append(self.spack_spec)
-
-    @run_before('compile')
-    def add_profiler(self):
-        if self.profiler:
-            # Command to use to view profiling traces
-            viewer_cmd = None
-            # Arguments to pass to the viewer
-            viewer_args = ''
-            if self.profiler == 'advisor-roofline':
-                pkg_spec = 'intel-oneapi-advisor'
-                # Spack package providing the profiler
-                self.build_system.specs.append(pkg_spec)
-                # Name of output directory
-                output_path = 'advisor-roofline'
-                # Prepend advisor call to the executable
-                self.executable = f'advisor -collect roofline --project-dir={output_path} -- ' + self.executable
-                # Save the output directory
-                self.keep_files.append(output_path)
-                viewer_cmd = 'advisor-gui'
-                viewer_args = f'{self.outputdir}/{output_path}'
-            elif self.profiler == 'nsight':
-                # Spack package providing the profiler
-                self.build_system.specs.append('nvidia-nsight-systems')
-                # Name of output file
-                output_path = 'nsys-trace'
-                # Prepend nsys call to the executable
-                self.executable = f'nsys profile --trace=cuda,mpi,nvtx,openmp,osrt,opengl,syscall --output {output_path} ' + self.executable
-                # Save the output file
-                self.keep_files.append(f'{output_path}.nsys-rep')
-                viewer_cmd = 'nsys-ui'
-                viewer_args = f'{self.outputdir}/{output_path}.nsys-rep'
-            elif self.profiler == 'vtune':
-                pkg_spec = 'intel-oneapi-vtune'
-                # Spack package providing the profiler
-                self.build_system.specs.append(pkg_spec)
-                # Name of output directory
-                output_path = 'vtune-profiling'
-                # Prepend VTune call to the executable
-                self.executable = f'vtune -collect hotspots -r {output_path} -- ' + self.executable
-                # Save the output directory
-                self.keep_files.append(f'{output_path}*')
-                viewer_cmd = 'vtune-gui'
-                viewer_args = f'{self.outputdir}/{output_path}*'
-            else:
-                raise CommandLineError(f'Unknown profiler {self.profiler}')
-
-            # Hack time! On ARCHER2 the home partition isn't mounted on compute
-            # nodes, but due to a longstanding upstream bug
-            # (<https://community.intel.com/t5/Intel-MPI-Library/How-to-install-beta8-without-it-getting-near-home-directory/m-p/1211465>),
-            # Intel tools want to *write* into the home directory at any cost.
-            # We trick them by setting the HOME env var to their installation
-            # directory.  Note: we use `prerun_cmds` instead of `env_vars` so
-            # that we do this only right before running the benchmark command
-            # and not also before compilation, where `spack location` wouldn't
-            # even work.  Let's hope nothing else relies on HOME being set to
-            # the actual home directory (also because it isn't accessible, you
-            # know).
-            if self.profiler in ('advisor-roofline', 'vtune') and self.current_system.name == 'archer2':
-                self.prerun_cmds.append(f'export HOME=$(spack -e {self.build_system.environment} location --install-dir {pkg_spec})')
-
-            if viewer_cmd:
-                # Print to stdout the command to use for viewing the profiling
-                # results.
-                self.postrun_cmds.append(f'''
-if which {viewer_cmd} 2> /dev/null; then
-    echo "You can view the profiler output with the command"
-    echo "    $(which {viewer_cmd}) {viewer_args}"
-fi''')
-
 
     @run_before('compile')
     def set_sge_num_slots(self):

@@ -61,6 +61,9 @@ class MicrobenchEOR(ContainerTest):
     @run_before('run')
     def add_prerun_cmds(self):
         self.prerun_cmds = [
+            f"touch {self.stagedir}/rfm_build.out",
+            f"touch {self.stagedir}/rfm_build.err",
+            f"touch {self.stagedir}/rfm_build.sh",
             f"echo \"Workflow start: $(date '+%Y-%m-%d %H:%M:%S')\" > {self.outputdir}/output.log"
         ]
         self.postrun_cmds = [
