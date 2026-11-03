@@ -246,8 +246,8 @@ def identify_build_environment(current_partition):
     return env_dir, cp_dir, subdir
 
 
-class ContainerTest(rfm.RegressionTest, special=True):
-    '''Base class for tests that can be submitted as container jobs.
+class TestInContainer(rfm.RegressionTest, special=True):
+    '''Base class for tests that can be submitted to run within a generic container.
 
     When running on a partition whose scheduler has `container_scheduler = True`,
     the compile phase is skipped and the test is submitted as a container job
@@ -260,7 +260,7 @@ class ContainerTest(rfm.RegressionTest, special=True):
     the container.
 
     Example usage in a test:
-        class MyTest(ContainerTest):
+        class MyTest(TestInContainer):
             container_image = 'registry.example.com/my-image:latest'
             container_cmd = 'bash /opt/run.sh'
     '''
@@ -303,9 +303,6 @@ class ContainerTest(rfm.RegressionTest, special=True):
             self.job.env_variables = self.env_variables
             self.job.use_persistent_storage = self.use_persistent_storage
             self.job.outputdir = self.outputdir
-            open(os.path.join(self.stagedir, "rfm_build.sh"), 'w').close()
-            open(os.path.join(self.stagedir, "rfm_build.out"), 'w').close()
-            open(os.path.join(self.stagedir, "rfm_build.err"), 'w').close()
 
     @run_before('compile')
     def add_profiler(self):
@@ -413,8 +410,8 @@ class ContainerTest(rfm.RegressionTest, special=True):
     @run_before('run')
     def _create_output_file(self):
         if getattr(self.current_partition.scheduler, 'container_scheduler', False):
-            open(os.path.join(self.outputdir, "rfm_job.out"), 'w').close()
-            open(os.path.join(self.outputdir, "rfm_job.err"), 'w').close()
+            open(os.path.join(self.stagedir, "rfm_job.out"), 'w').close()
+            open(os.path.join(self.stagedir, "rfm_job.err"), 'w').close()
 
     def compile(self):
         if getattr(self.current_partition.scheduler, 'container_scheduler', False) or self.run_only_test:
@@ -485,6 +482,13 @@ class ContainerTest(rfm.RegressionTest, special=True):
         else:
             return True
 
+    @run_before("cleanup")
+    def _exist_buildfile(self):
+        if not os.path.exists(os.path.join(self.stagedir, "rfm_build.sh")):
+            open(os.path.join(self.stagedir, "rfm_build.sh"), 'w').close()
+            open(os.path.join(self.stagedir, "rfm_build.out"), 'w').close()
+            open(os.path.join(self.stagedir, "rfm_build.err"), 'w').close()
+
     @run_after("cleanup")
     def container_print_out(self):
         if self.in_container:
@@ -498,13 +502,14 @@ class ContainerTest(rfm.RegressionTest, special=True):
                 subprocess.run(f"echo ===EXTRA OUTPUT===", shell=True)
                 subprocess.run(f"cat {self.outputdir}/{self.in_container_outputfile}", shell=True)
                 subprocess.run(f"echo ===EXTRA OUTPUT END===", shell=True)
-                
 
 
-# Subclass to make importing STARS benchmarks easier
-class STARSTest(ContainerTest):
-    stars_name="generic"
-    bench_name=f"STARS_{stars_name}"
+class ContainerTest(TestInContainer):
+    """
+    Subclass of TestInContainer for tests that themselves require a specific container to run instead of running in a
+    generic container. This was originally created to accomadate the STARS workloads from
+    https://gitlab.com/ska-telescope/src/src-workloads
+    """
 
     valid_systems = ['*']
     valid_prog_environs = ['default']
@@ -520,10 +525,9 @@ class STARSTest(ContainerTest):
     executable = "singularity"
 
     output_dict_list = []
-    container_url = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/generic"
     container_cmd = "/scripts/run-task.sh"
+
     container_datadir = variable(str, value="/data", loggable=True)
-    execute_script = "/scripts/run-task.sh"
     # dataset is a list of dicts with "filename" and "url" fields
     dataset = []
     data_directories = []
@@ -532,15 +536,19 @@ class STARSTest(ContainerTest):
 
     reference_time = variable(float, value=-1.0)
 
+    @run_before('setup')
+    def align_commands(self):
+        self.execute_script = self.container_cmd
+
     @run_after('setup')
     def copy_dirs_stage(self):
-        self.bench_name=f"STARS_{self.stars_name.replace('-','_')}"
+        self.bench_name=f"{self.bench_name.replace('-','_')}"
         self.code_dir = os.path.join(self.stagedir, f"{self.bench_name}_Code")
         os.makedirs(self.code_dir, exist_ok=True)
         self.data_dir = os.path.join(self.stagedir, f"{self.bench_name}_Data")
         os.makedirs(self.data_dir, exist_ok=True)
 
-        self.container_name =self.container_url.rsplit("/", 1)[-1]
+        self.container_name =self.container_image.rsplit("/", 1)[-1]
         self.container_path = os.path.join(self.code_dir, f"singularity_images/{self.container_name}.sif")
 
     @run_after('setup')
@@ -552,7 +560,7 @@ class STARSTest(ContainerTest):
                     shell=True
                 )
                 subprocess.run(
-                    f"singularity pull {self.container_url}",
+                    f"singularity pull {self.container_image}",
                     shell=True)
                 subprocess.run(f"mv {self.container_name}_latest.sif {self.container_path}", shell=True)
             for a in self.data_directories:
@@ -629,13 +637,13 @@ class STARSTest(ContainerTest):
         if getattr(self.current_partition.scheduler, 'container_scheduler', False):
             output = open(os.path.join(self.outputdir, "container_job.out"), 'a')
         else:
-            output = open(os.path.join(self.stdout), 'a')
-        output.write(f"STARSscore, {self.stars_name}, {score}")
+            output = open(os.path.join(self.stagedir, "rfm_job.out"), 'a')
+        output.write(f"STARSscore, {self.bench_name}, {score}")
         output.close()
         return score
 
 
-class SpackTest(ContainerTest): #(rfm.RegressionTest):
+class SpackTest(TestInContainer): #(rfm.RegressionTest):
     build_system = 'Spack'
     pre_container_stage = None
     spack_spec = variable(str, value='', loggable=True)

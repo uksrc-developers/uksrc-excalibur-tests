@@ -32,8 +32,7 @@ site/
 
 #emacs backups
 *~
-benchmarks/apps/microbench-lofarint/LOFARINT_Data/
-benchmarks/apps/microbench-lofarint/LOFARINT_Code/
+
 
 # vim
 .*.swp
