@@ -19,6 +19,8 @@ class STARSradiogalaxyclassifiercnn(STARSTest):
     container_cmd = "/scripts/run-task.sh"
     execute_script = container_cmd
 
+    reference_time = 14.6
+
     @sanity_function
     def validate(self):
         if getattr(self.current_partition.scheduler, 'container_scheduler', False):

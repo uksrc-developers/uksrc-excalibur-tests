@@ -26,6 +26,8 @@ class STARSimagecoaddingswarp(STARSTest):
     container_cmd = "/scripts/coadd-sdss.sh"
     execute_script = container_cmd
 
+    reference_time = 133.0
+
     @sanity_function
     def validate(self):
         if getattr(self.current_partition.scheduler, 'container_scheduler', False):

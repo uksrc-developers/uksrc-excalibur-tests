@@ -18,6 +18,8 @@ class STARSsourcefindingpybdsf(STARSTest):
     container_cmd = "/scripts/LOTSS-P21-1image/LOTSS-P21-sourcefinding.sh"
     execute_script = container_cmd
 
+    reference_time = 46.67
+
     @sanity_function
     def validate(self):
         if getattr(self.current_partition.scheduler, 'container_scheduler', False):

@@ -10,7 +10,7 @@ from warnings import warn
 
 import reframe as rfm
 from numpy.f2py.auxfuncs import throw_error
-from reframe.core.builtins import run_before, variable, run_after, sanity_function
+from reframe.core.builtins import run_before, variable, run_after, sanity_function, performance_function
 from reframe.core.exceptions import BuildSystemError, CommandLineError
 from reframe.core.logging import getlogger
 from reframe.utility.osext import run_command
@@ -281,6 +281,11 @@ class ContainerTest(rfm.RegressionTest, special=True):
     env_variables = variable(dict, value={}, loggable=True)
     use_persistent_storage = variable(bool, value=False, loggable=True)
 
+    run_time = variable(float, value=-1.0)
+
+    in_container = variable(bool, value=False, loggable=True)
+    in_container_outputfile = variable(str, value="", loggable=True)
+
     def __init__(self):
         self._is_container_job = False
 
@@ -290,7 +295,7 @@ class ContainerTest(rfm.RegressionTest, special=True):
             if self.container_cmd == "":
                 import inspect
                 path = inspect.getfile(type(self))
-                self.container_cmd = f'reframe --system=default -c /opt/uksrc-excalibur-tests/{path[path.find("benchmarks/apps"):]} -n {type(self).__name__} -r'
+                self.container_cmd = f'reframe --system=default -S in_container=True -c /opt/uksrc-excalibur-tests/{path[path.find("benchmarks/apps"):]} -n {type(self).__name__} -r'
             self._is_container_job = True
             self.job.container_image = self.container_image
             self.job.container_cmd = self.container_cmd
@@ -298,9 +303,9 @@ class ContainerTest(rfm.RegressionTest, special=True):
             self.job.env_variables = self.env_variables
             self.job.use_persistent_storage = self.use_persistent_storage
             self.job.outputdir = self.outputdir
-        open(os.path.join(self.stagedir, "rfm_build.sh"), 'w').close()
-        open(os.path.join(self.stagedir, "rfm_build.out"), 'w').close()
-        open(os.path.join(self.stagedir, "rfm_build.err"), 'w').close()
+            open(os.path.join(self.stagedir, "rfm_build.sh"), 'w').close()
+            open(os.path.join(self.stagedir, "rfm_build.out"), 'w').close()
+            open(os.path.join(self.stagedir, "rfm_build.err"), 'w').close()
 
     @run_before('compile')
     def add_profiler(self):
@@ -426,12 +431,75 @@ class ContainerTest(rfm.RegressionTest, special=True):
             return True
         return super().compile_complete()
 
+    @run_before("performance")
+    def output_list_dict(self):
+        """
+        In order to use the database handler perflog 'swiftdb', self.output_dict_list must be defined.
+        This dictionary should include at least:
+        - TimeOfTest [str]
+        - SystemPartition [str]
+        - <Desired Output variables> [Format Determined by entry]
+        """
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            start_str = sn.evaluate(sn.extractsingle(
+                r'Workflow start: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
+                pathlib.Path(self.outputdir) / pathlib.Path("container_job.out"),
+                tag=1
+            ))
+            finish_str = sn.evaluate(sn.extractsingle(
+                r'Workflow end: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
+                pathlib.Path(self.outputdir) / pathlib.Path("container_job.out"),
+                tag=1
+            ))
+        else:
+            start_str = sn.evaluate(sn.extractsingle(
+                r'Workflow start: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
+                pathlib.Path(self.outputdir) / pathlib.Path("output.log"),
+                tag=1
+            ))
+            finish_str = sn.evaluate(sn.extractsingle(
+                r'Workflow end: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
+                pathlib.Path(self.outputdir) / pathlib.Path("output.log"),
+                tag=1
+            ))
+        start = dt.strptime(start_str, "%Y-%m-%d %H:%M:%S")
+        finish = dt.strptime(finish_str, "%Y-%m-%d %H:%M:%S")
+
+        self.run_time = (finish - start).total_seconds()
+
+        time_of_test = str(dt.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+        self.output_dict_list += [
+            {
+                "TimeOfTest": time_of_test,
+                "SystemPartition": f"{os.environ.get('GH_RUNNER')} - {self.current_system.name} - {self.current_partition.name}",
+                "ExecutionTime": self.run_time
+            }
+        ]
+        print(self.output_dict_list)
+
     @sanity_function
     def validate(self):
         if getattr(self.current_partition.scheduler, 'container_scheduler', False) and "reframe" in self.container_cmd:
-            return sn.assert_found(r'\x1b\[32m PASSED \x1b\[0m', os.path.join(self.outputdir, "kubernetes_job.out"))
+            return sn.assert_found(r'\x1b\[32m PASSED \x1b\[0m', os.path.join(self.outputdir, "container_job.out"))
         else:
             return True
+
+    @run_after("cleanup")
+    def container_print_out(self):
+        if self.in_container:
+            subprocess.run(f"echo ===rfm_job.out===", shell=True)
+            subprocess.run(f"cat {self.outputdir}/rfm_job.out", shell=True)
+            subprocess.run(f"echo ===rfm_job.out END===", shell=True)
+            subprocess.run(f"echo ===rfm_job.err===", shell=True)
+            subprocess.run(f"cat {self.outputdir}/rfm_job.err", shell=True)
+            subprocess.run(f"echo ===rfm_job.err END===", shell=True)
+            if self.in_container_outputfile:
+                subprocess.run(f"echo ===EXTRA OUTPUT===", shell=True)
+                subprocess.run(f"cat {self.outputdir}/{self.in_container_outputfile}", shell=True)
+                subprocess.run(f"echo ===EXTRA OUTPUT END===", shell=True)
+                
+
 
 # Subclass to make importing STARS benchmarks easier
 class STARSTest(ContainerTest):
@@ -458,10 +526,11 @@ class STARSTest(ContainerTest):
     execute_script = "/scripts/run-task.sh"
     # dataset is a list of dicts with "filename" and "url" fields
     dataset = []
-    env = 'DUMMY_VAR=123'
     data_directories = []
 
     data_mode = None
+
+    reference_time = variable(float, value=-1.0)
 
     @run_after('setup')
     def copy_dirs_stage(self):
@@ -493,29 +562,33 @@ class STARSTest(ContainerTest):
                     subprocess.run(f"wget -nc {a['url']} -O {os.path.join(self.data_dir, a['filename'])}", shell=True)
                 if "decompress" in a.keys():
                     if a["decompress"] == "bzip2":
-                        subprocess.run(f"bzip2 -dfk {os.path.join(self.data_dir, a['filename'])}", shell=True)
+                        subprocess.run(f"bzip2 -dfk {os.path.join(self.data_dir, a['filename'])} ", shell=True)
                     elif a["decompress"] == "gzip":
                         subprocess.run(f"gzip -dfk {os.path.join(self.data_dir, a['filename'])}", shell=True)
+                    elif a["decompress"] == "unzip":
+                        subprocess.run(f"unzip {os.path.join(self.data_dir, a['filename'])} -d {self.data_dir}", shell=True)
         else:
             if self.data_mode is None:
                 for a in self.data_directories:
-                    self.container_precmd = self.container_precmd + f"mkdir -p {self.container_datadir}/{a}\n"
+                    self.container_precmd += f"mkdir -p {self.container_datadir}/{a}\n"
                 for a in self.dataset:
                     if not os.path.isfile(os.path.join(self.data_dir, a['filename'])):
-                       self.container_precmd = self.container_precmd + f"wget -nc {a['url']} -O {self.container_datadir}/{a['filename']}\n"
+                       self.container_precmd += f"wget -nc {a['url']} -O {self.container_datadir}/{a['filename']}\n"
                     if "decompress" in a.keys():
                         if a["decompress"] == "bzip2":
-                            self.container_precmd = self.container_precmd + f"bzip2 -dfk {self.container_datadir}/{a['filename']}\n"
+                            self.container_precmd += f"bzip2 -dfk {self.container_datadir}/{a['filename']}\n"
                         elif a["decompress"] == "gzip":
-                            self.container_precmd = self.container_precmd + f"gzip -dfk {self.container_datadir}/{a['filename']}\n"
+                            self.container_precmd += f"gzip -dfk {self.container_datadir}/{a['filename']}\n"
             else:
                 # At this point the contents of data_mode should be the path to a bash script to download the data.
-                subprocess.run(f"{self.executable} exec --no-home --pwd {self.container_datadir} --env {self.env} --bind {self.outputdir}:/output --bind {self.data_dir}:{self.container_datadir} {self.container_path}   /bin/bash {self.data_mode}", shell=True)
+                environs = " ".join([f"--env {k}={v}" for k, v in self.env_variables.items()])
+                subprocess.run(f"{self.executable} exec --no-home --pwd {self.container_datadir} {environs} --bind {self.outputdir}:/output --bind {self.data_dir}:{self.container_datadir} {self.container_path}   /bin/bash {self.data_mode}", shell=True)
 
     @run_before('run')
     def add_utils_prerun_cmds(self):
         if getattr(self.current_partition.scheduler, 'container_scheduler', False):
             return
+
         self.prerun_cmds += [
             f"touch {self.stagedir}/rfm_build.out",
             f"touch {self.stagedir}/rfm_build.err",
@@ -540,8 +613,7 @@ class STARSTest(ContainerTest):
             "--no-home",
             "--pwd",
             f"{self.container_datadir}",
-            "--env",
-            f"{self.env}",
+            *[f"--env {k}={v}" for k, v in self.env_variables.items()],
             "--bind",
             f"{self.outputdir}:/output",
             "--bind",
@@ -551,52 +623,16 @@ class STARSTest(ContainerTest):
             os.path.join("/output/ssh_job.sh")
         ]
 
-    @run_before("performance")
-    def output_list_dict(self):
-        """
-        In order to use the database handler perflog 'swiftdb', self.output_dict_list must be defined.
-        This dictionary should include at least:
-        - TimeOfTest [str]
-        - SystemPartition [str]
-        - <Desired Output variables> [Format Determined by entry]
-        """
+    @performance_function('STARSscore')
+    def STARSscore(self):
+        score = round(self.run_time/self.reference_time, 2)
         if getattr(self.current_partition.scheduler, 'container_scheduler', False):
-            start_str = sn.evaluate(sn.extractsingle(
-                r'Workflow start: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
-                pathlib.Path(self.outputdir) / pathlib.Path("kubernetes_job.out"),
-                tag=1
-            ))
-            finish_str = sn.evaluate(sn.extractsingle(
-                r'Workflow end: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
-                pathlib.Path(self.outputdir) / pathlib.Path("kubernetes_job.out"),
-                tag=1
-            ))
+            output = open(os.path.join(self.outputdir, "container_job.out"), 'a')
         else:
-            start_str = sn.evaluate(sn.extractsingle(
-                r'Workflow start: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
-                pathlib.Path(self.outputdir) / pathlib.Path("output.log"),
-                tag=1
-            ))
-            finish_str = sn.evaluate(sn.extractsingle(
-                r'Workflow end: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
-                pathlib.Path(self.outputdir) / pathlib.Path("output.log"),
-                tag=1
-            ))
-        start = dt.strptime(start_str, "%Y-%m-%d %H:%M:%S")
-        finish = dt.strptime(finish_str, "%Y-%m-%d %H:%M:%S")
-
-        elapsed_seconds = (finish - start).total_seconds()
-
-        time_of_test = str(dt.now().strftime("%Y-%m-%d %H:%M:%S"))
-
-        self.output_dict_list += [
-            {
-                "TimeOfTest": time_of_test,
-                "SystemPartition": f"{os.environ.get('GH_RUNNER')} - {self.current_system.name} - {self.current_partition.name}",
-                "ExecutionTime": elapsed_seconds
-            }
-        ]
-        print(self.output_dict_list)
+            output = open(os.path.join(self.stdout), 'a')
+        output.write(f"STARSscore, {self.stars_name}, {score}")
+        output.close()
+        return score
 
 
 class SpackTest(ContainerTest): #(rfm.RegressionTest):
@@ -637,7 +673,6 @@ class SpackTest(ContainerTest): #(rfm.RegressionTest):
             f'spack -e {self.build_system.environment} config add "config:install_tree:root:{env_dir}/opt"',
         ]
 
-        self.postrun_cmds.append(f'echo "spack_spec_dict: $(spack -e {self.build_system.environment} python -c \'{cmd_spack_spec_dict}\')" >> {self.stagedir}/rfm_job.out')
         self.postrun_cmds.append(f'echo "spack_spec_dict: $(spack -e {self.build_system.environment} python -c \'{cmd_spack_spec_dict}\')" >> {self.stdout}')
         self.postrun_cmds.append(f'cat {self.stagedir}/rfm_job.out')
 
