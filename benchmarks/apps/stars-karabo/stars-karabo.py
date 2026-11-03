@@ -1,0 +1,27 @@
+import os
+
+import reframe as rfm
+from reframe.core.builtins import sanity_function
+import reframe.utility.sanity as sn
+
+from benchmarks.modules.utils import STARSTest
+
+@rfm.simple_test
+class STARSkarabo(STARSTest):
+    stars_name="karabo"
+    tags = {"stars"}
+    container_image = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/karabo"
+    container_url = container_image
+
+    container_precmd += "/scripts/get-data.sh\n"
+
+    container_cmd = "/scripts/run-task.sh"
+    execute_script = container_cmd
+
+    @sanity_function
+    def validate(self):
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            return super().validate()
+        return sn.all([
+            super().validate(),
+        ])

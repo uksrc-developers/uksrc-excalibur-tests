@@ -34,4 +34,6 @@ from: mambaorg/micromamba:2.5
     CLA="$@"
     echo "Executing command:"
     echo "$PYTHON $PYTHON_SCRIPT $CLA"
+    echo "Workflow start: $(date '+%Y-%m-%d %H:%M:%S')"
     $PYTHON $PYTHON_SCRIPT $CLA
+    echo "Workflow end: $(date '+%Y-%m-%d %H:%M:%S')"

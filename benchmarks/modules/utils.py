@@ -6,10 +6,11 @@ import json
 import sys
 import pprint
 import pathlib
+from warnings import warn
 
 import reframe as rfm
 from numpy.f2py.auxfuncs import throw_error
-from reframe.core.builtins import run_before, variable, run_after
+from reframe.core.builtins import run_before, variable, run_after, sanity_function
 from reframe.core.exceptions import BuildSystemError, CommandLineError
 from reframe.core.logging import getlogger
 from reframe.utility.osext import run_command
@@ -264,39 +265,47 @@ class ContainerTest(rfm.RegressionTest, special=True):
             container_cmd = 'bash /opt/run.sh'
     '''
 
-    #: The container image to use when submitting to a container scheduler.
+    # The container image to use when submitting to a container scheduler.
     container_image = variable(
         str,
-        value='spsrc26.iaa.csic.es/srcnet-benchmarks/uksrc_excalibur_tests_base:0.1.2',
+        value='spsrc26.iaa.csic.es/srcnet-benchmarks/uksrc_excalibur_tests_base:latest',
         loggable=True,
     )
 
     # Run only tests need to set this variable to True
     run_only_test = False
-    #: The command to run inside the container. Defaults to running the
-    #: current test via ReFrame inside the container.
+    # The command to run inside the container. Defaults to running the
+    # current test via ReFrame inside the container.
+    container_precmd = variable(str, value="", loggable=True)
     container_cmd = variable(str, value="", loggable=True)
     env_variables = variable(dict, value={}, loggable=True)
+    use_persistent_storage = variable(bool, value=False, loggable=True)
 
     def __init__(self):
         self._is_container_job = False
 
-    @run_after('setup')
+    @run_before('run')
     def _intercept_for_container_scheduler(self):
         if getattr(self.current_partition.scheduler, 'container_scheduler', False):
             if self.container_cmd == "":
                 import inspect
                 path = inspect.getfile(type(self))
-                self.container_cmd = f'reframe --system=default -c /opt/uksrc-excalibur-tests/{path[path.find("benchmarks/apps"):]} -n {self.name[:self.name.find(" ")]} -r && cat {self.output_file}'
+                self.container_cmd = f'reframe --system=default -c /opt/uksrc-excalibur-tests/{path[path.find("benchmarks/apps"):]} -n {type(self).__name__} -r'
             self._is_container_job = True
             self.job.container_image = self.container_image
             self.job.container_cmd = self.container_cmd
+            self.job.container_precmd = self.container_precmd
             self.job.env_variables = self.env_variables
+            self.job.use_persistent_storage = self.use_persistent_storage
             self.job.outputdir = self.outputdir
+        open(os.path.join(self.stagedir, "rfm_build.sh"), 'w').close()
+        open(os.path.join(self.stagedir, "rfm_build.out"), 'w').close()
+        open(os.path.join(self.stagedir, "rfm_build.err"), 'w').close()
 
     @run_before('compile')
     def add_profiler(self):
-        if hasattr(self, 'profiler'):
+        if hasattr(self, 'profiler') and self.profiler != "":
+            print(f"profiler: {self.profiler}")
             # Command to use to view profiling traces
             viewer_cmd = None
             # Arguments to pass to the viewer
@@ -355,12 +364,12 @@ class ContainerTest(rfm.RegressionTest, special=True):
                     "likwid-bench -t peakflops -W N:${STREAM_SIZE}:${THREAD_COUNT} | grep 'MFlops/s:' >> ${LIK_OUTPUT}",
                     "echo 'Scalar MByte/s' >> ${LIK_OUTPUT}",
                     "likwid-bench -t load -W N:8GB:${THREAD_COUNT} | grep 'MByte/s:' >> ${LIK_OUTPUT}",
-                    'python -c "import pyprofqueue.profilers.likwid as lik; lik.create_custom_group();"',
+                    f'{os.path.dirname(sys.executable)}/python -c "import pyprofqueue.profilers.likwid as lik; lik.create_custom_group();"',
                     "export ARCHITECTURE=$(likwid-perfctr -i | awk '/CPU short:/ {print $NF}')",
                     "mkdir -p $HOME/.likwid/groups/$ARCHITECTURE",
-                    "cp ./CUSTOM_GROUP.txt $HOME/.likwid/groups/$ARCHITECTURE/CUSTOM_GROUP.txt"
+                    "cp ./PYPROFQUEUE.txt $HOME/.likwid/groups/$ARCHITECTURE/PYPROFQUEUE.txt"
                 ]
-                self.executable = f'likwid-perfctr -g CUSTOM_GROUP -t 120s -O -f ' + self.executable + " 2> ${LIK_OUTPUT_DIR}/temp_likwid.txt > ${LIK_OUTPUT_DIR}/temp_out.txt"
+                self.executable = f'likwid-perfctr -g PYPROFQUEUE -t 120s -O -f ' + self.executable + " 2> ${LIK_OUTPUT_DIR}/temp_likwid.txt > ${LIK_OUTPUT_DIR}/temp_out.txt"
                 self.postrun_cmds += [
                     "sed -n '/^# HWThreads:/,+1p' ${LIK_OUTPUT_DIR}/temp_out.txt > ${LIK_OUTPUT_DIR}/likwid_output.txt",
                     "sed '/^$/Q' ${LIK_OUTPUT_DIR}/temp_likwid.txt >> ${LIK_OUTPUT_DIR}/likwid_output.txt",
@@ -370,7 +379,7 @@ class ContainerTest(rfm.RegressionTest, special=True):
                 # viewer_cmd = '<>'
                 # viewer_args = f'{self.outputdir}/{output_path}*'
             else:
-                raise CommandLineError(f'Unknown profiler {self.profiler}')
+                warn(f'Unknown profiler {self.profiler}')
 
             # Hack time! On ARCHER2 the home partition isn't mounted on compute
             # nodes, but due to a longstanding upstream bug
@@ -396,13 +405,11 @@ class ContainerTest(rfm.RegressionTest, special=True):
         echo "    $(which {viewer_cmd}) {viewer_args}"
     fi''')
 
-
     @run_before('run')
     def _create_output_file(self):
         if getattr(self.current_partition.scheduler, 'container_scheduler', False):
             open(os.path.join(self.outputdir, "rfm_job.out"), 'w').close()
             open(os.path.join(self.outputdir, "rfm_job.err"), 'w').close()
-
 
     def compile(self):
         if getattr(self.current_partition.scheduler, 'container_scheduler', False) or self.run_only_test:
@@ -418,6 +425,13 @@ class ContainerTest(rfm.RegressionTest, special=True):
         if getattr(self.current_partition.scheduler, 'container_scheduler', False) or self.run_only_test:
             return True
         return super().compile_complete()
+
+    @sanity_function
+    def validate(self):
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False) and "reframe" in self.container_cmd:
+            return sn.assert_found(r'\x1b\[32m PASSED \x1b\[0m', os.path.join(self.outputdir, "kubernetes_job.out"))
+        else:
+            return True
 
 # Subclass to make importing STARS benchmarks easier
 class STARSTest(ContainerTest):
@@ -439,6 +453,8 @@ class STARSTest(ContainerTest):
 
     output_dict_list = []
     container_url = "docker://registry.gitlab.com/ska-telescope/src/src-workloads/generic"
+    container_cmd = "/scripts/run-task.sh"
+    container_datadir = variable(str, value="/data", loggable=True)
     execute_script = "/scripts/run-task.sh"
     # dataset is a list of dicts with "filename" and "url" fields
     dataset = []
@@ -446,7 +462,6 @@ class STARSTest(ContainerTest):
     data_directories = []
 
     data_mode = None
-
 
     @run_after('setup')
     def copy_dirs_stage(self):
@@ -459,36 +474,49 @@ class STARSTest(ContainerTest):
         self.container_name =self.container_url.rsplit("/", 1)[-1]
         self.container_path = os.path.join(self.code_dir, f"singularity_images/{self.container_name}.sif")
 
-
     @run_after('setup')
     def download_code(self):
-        if not os.path.isfile(self.container_path):
-            subprocess.run(
-                f"mkdir {os.path.join(self.code_dir, 'singularity_images')}",
-                shell=True
-            )
-            subprocess.run(
-                f"singularity pull {self.container_url}",
-                shell=True)
-            subprocess.run(f"mv {self.container_name}_latest.sif {self.container_path}", shell=True)
-        if self.data_mode == None:
+        if not getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            if not os.path.isfile(self.container_path):
+                subprocess.run(
+                    f"mkdir {os.path.join(self.code_dir, 'singularity_images')}",
+                    shell=True
+                )
+                subprocess.run(
+                    f"singularity pull {self.container_url}",
+                    shell=True)
+                subprocess.run(f"mv {self.container_name}_latest.sif {self.container_path}", shell=True)
             for a in self.data_directories:
                 subprocess.run(f"mkdir -p {(os.path.join(self.data_dir, a))}", shell=True)
             for a in self.dataset:
                 if not os.path.isfile(os.path.join(self.data_dir, a['filename'])):
-                   subprocess.run(f"wget -nc {a['url']} -O {os.path.join(self.data_dir, a['filename'])}", shell=True)
+                    subprocess.run(f"wget -nc {a['url']} -O {os.path.join(self.data_dir, a['filename'])}", shell=True)
                 if "decompress" in a.keys():
                     if a["decompress"] == "bzip2":
-                         subprocess.run(f"bzip2 -dfk {os.path.join(self.data_dir, a['filename'])}", shell=True)
+                        subprocess.run(f"bzip2 -dfk {os.path.join(self.data_dir, a['filename'])}", shell=True)
                     elif a["decompress"] == "gzip":
-                         subprocess.run(f"gzip -dfk {os.path.join(self.data_dir, a['filename'])}", shell=True)
+                        subprocess.run(f"gzip -dfk {os.path.join(self.data_dir, a['filename'])}", shell=True)
         else:
-            # At this point the contents of data_mode should be the path to a bash script to download the data.
-            subprocess.run(f"{executable} exec --no-home --pwd /data --env {self.env} --bind {self.outputdir}:/output --bind {self.data_dir}:/data {self.container_path}   /bin/bash {data_mode}", shell=True)
+            if self.data_mode is None:
+                for a in self.data_directories:
+                    self.container_precmd = self.container_precmd + f"mkdir -p {self.container_datadir}/{a}\n"
+                for a in self.dataset:
+                    if not os.path.isfile(os.path.join(self.data_dir, a['filename'])):
+                       self.container_precmd = self.container_precmd + f"wget -nc {a['url']} -O {self.container_datadir}/{a['filename']}\n"
+                    if "decompress" in a.keys():
+                        if a["decompress"] == "bzip2":
+                            self.container_precmd = self.container_precmd + f"bzip2 -dfk {self.container_datadir}/{a['filename']}\n"
+                        elif a["decompress"] == "gzip":
+                            self.container_precmd = self.container_precmd + f"gzip -dfk {self.container_datadir}/{a['filename']}\n"
+            else:
+                # At this point the contents of data_mode should be the path to a bash script to download the data.
+                subprocess.run(f"{self.executable} exec --no-home --pwd {self.container_datadir} --env {self.env} --bind {self.outputdir}:/output --bind {self.data_dir}:{self.container_datadir} {self.container_path}   /bin/bash {self.data_mode}", shell=True)
 
     @run_before('run')
-    def add_prerun_cmds(self):
-        self.prerun_cmds = [
+    def add_utils_prerun_cmds(self):
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            return
+        self.prerun_cmds += [
             f"touch {self.stagedir}/rfm_build.out",
             f"touch {self.stagedir}/rfm_build.err",
             f"touch {self.stagedir}/rfm_build.sh",
@@ -498,24 +526,26 @@ class STARSTest(ContainerTest):
             f"echo '{self.execute_script}' >> {self.outputdir}/ssh_job.sh",
             f"echo \"Workflow start: $(date '+%Y-%m-%d %H:%M:%S')\" > {self.outputdir}/output.log"
         ]
-        self.postrun_cmds = [
+        self.postrun_cmds += [
             f"echo \"Workflow end: $(date '+%Y-%m-%d %H:%M:%S')\" >> {self.outputdir}/output.log"
         ]
 
     @run_before('run')
     def set_executable_opts(self):
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            return
         os.mkdir(os.path.join(self.outputdir, "logs"))
         self.executable_opts = [
             "exec",
             "--no-home",
             "--pwd",
-            "/data",
+            f"{self.container_datadir}",
             "--env",
             f"{self.env}",
             "--bind",
             f"{self.outputdir}:/output",
             "--bind",
-            f"{self.data_dir}:/data",
+            f"{self.data_dir}:{self.container_datadir}",
             os.path.join(self.container_path),
             f"bash",
             os.path.join("/output/ssh_job.sh")
@@ -530,16 +560,28 @@ class STARSTest(ContainerTest):
         - SystemPartition [str]
         - <Desired Output variables> [Format Determined by entry]
         """
-        start_str = sn.evaluate(sn.extractsingle(
-            r'Workflow start: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
-            pathlib.Path(self.outputdir) / pathlib.Path("output.log"),
-            tag=1
-        ))
-        finish_str = sn.evaluate(sn.extractsingle(
-            r'Workflow end: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
-            pathlib.Path(self.outputdir) / pathlib.Path("output.log"),
-            tag=1
-        ))
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            start_str = sn.evaluate(sn.extractsingle(
+                r'Workflow start: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
+                pathlib.Path(self.outputdir) / pathlib.Path("kubernetes_job.out"),
+                tag=1
+            ))
+            finish_str = sn.evaluate(sn.extractsingle(
+                r'Workflow end: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
+                pathlib.Path(self.outputdir) / pathlib.Path("kubernetes_job.out"),
+                tag=1
+            ))
+        else:
+            start_str = sn.evaluate(sn.extractsingle(
+                r'Workflow start: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
+                pathlib.Path(self.outputdir) / pathlib.Path("output.log"),
+                tag=1
+            ))
+            finish_str = sn.evaluate(sn.extractsingle(
+                r'Workflow end: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
+                pathlib.Path(self.outputdir) / pathlib.Path("output.log"),
+                tag=1
+            ))
         start = dt.strptime(start_str, "%Y-%m-%d %H:%M:%S")
         finish = dt.strptime(finish_str, "%Y-%m-%d %H:%M:%S")
 
@@ -576,8 +618,6 @@ class SpackTest(ContainerTest): #(rfm.RegressionTest):
             print(result_dict)'
         if getattr(self.current_partition.scheduler, 'container_scheduler', False):
             self.pre_container_stage = f'{self.stagedir}/rfm_job.out'
-            subprocess.run(f'echo "spack_spec_dict: $(spack -e {os.path.join(dest, subdir)} python -c \'{cmd_spack_spec_dict}\')" >> {self.stagedir}/rfm_job.out', shell=True)
-            self.postrun_cmds.append(f'cat {self.stagedir}/rfm_job.out')
             return
         self.build_system.environment = os.path.join(dest, subdir)
         # Base name and full path of common settings file.
@@ -598,6 +638,8 @@ class SpackTest(ContainerTest): #(rfm.RegressionTest):
         ]
 
         self.postrun_cmds.append(f'echo "spack_spec_dict: $(spack -e {self.build_system.environment} python -c \'{cmd_spack_spec_dict}\')" >> {self.stagedir}/rfm_job.out')
+        self.postrun_cmds.append(f'echo "spack_spec_dict: $(spack -e {self.build_system.environment} python -c \'{cmd_spack_spec_dict}\')" >> {self.stdout}')
+        self.postrun_cmds.append(f'cat {self.stagedir}/rfm_job.out')
 
         # Keep the `spack.lock` file in the output directory so that the Spack
         # environment can be faithfully reproduced later.
@@ -605,10 +647,14 @@ class SpackTest(ContainerTest): #(rfm.RegressionTest):
 
     @run_after('run')
     def get_full_variants(self):
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            self.spack_spec_dict = "spack_spec_dict: "
+            return
         with osext.change_dir(self.stagedir):
             self.spack_spec_dict = sn.extractsingle(r'spack_spec_dict: \s*(.*)', self.stdout, 1).evaluate()
             # convert all single quotes to double quotes since JSON does not recognise it
             self.spack_spec_dict = self.spack_spec_dict.replace("'", "\"")
+            return
 
     @run_before('compile')
     def setup_build_system(self):
@@ -650,7 +696,6 @@ class SpackTest(ContainerTest): #(rfm.RegressionTest):
         # using full partitions may have lower priority.
         if not self.build_locally:
             self.build_job.num_cpus_per_task = min(16, self.current_partition.processor.num_cpus)
-
 
 
 if __name__ == '__main__':

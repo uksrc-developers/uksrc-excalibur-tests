@@ -15,7 +15,7 @@ class FftBench(CMakePackage):
     variant("rocm", default=False, description="Enable rocFFT Library.")
 
     depends_on("cmake", type="build")
-    depends_on("llvm", type="build")
+    depends_on("llvm")
     depends_on("openmpi")
     depends_on("fftw +openmp")
     #    depends_on("mkl", when="+mkl")
@@ -32,7 +32,7 @@ class FftBench(CMakePackage):
             self.define("BUILD_SHARED_LIBS", True),
             self.define("CMAKE_CXX_FLAGS", "-fopenmp"),
             self.define("CMAKE_EXE_LINKER_FLAGS", "-fopenmp"),
-            self.define("FFTW3_DIR", self.spec['fftw'].prefix)
+            self.define("FFTW3_DIR", self.spec['fftw'].prefix),
         ]
 
         if self.spec.satisfies("+cuda"):
