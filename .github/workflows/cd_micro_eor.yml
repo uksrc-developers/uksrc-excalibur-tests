@@ -1,0 +1,71 @@
+name: Deploy EoR Microbenchmark to runner
+run-name: ${{ github.actor }} is running EoR Microbenchmark.
+on:
+  workflow_call:
+    inputs:
+      runner-matrix:
+        description: 'Pre-computed runner matrix JSON'
+        required: false
+        type: string
+#  schedule:
+#    - cron: "0 0 * * 1"
+# "Minute Hour DayOfMonth(1-31) Month(1-12) DayOfWeek(0-6, Sun - Sat)"
+
+jobs:
+  # This searches the framework repo for all available runners and submits all workflows to them.
+  discover-runners:
+    if: ${{ inputs.runner-matrix == '' || inputs.runner-matrix == null }}
+    runs-on: ubuntu-latest  # Use GitHub-hosted for discovery
+    outputs:
+      matrix: ${{ steps.runner-retrieval.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+      - id: runner-retrieval
+        uses: ./.github/actions/runner-retrieval
+        with:
+          github-token: ${{ secrets.PAT_TOKEN }}
+
+  run-eor:
+    needs: discover-runners
+    if: ${{ !cancelled() }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.runner-matrix || needs.discover-runners.outputs.matrix) }}
+    runs-on: [ self-hosted, "${{ matrix.runner }}" ]
+    environment: production
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/common-setup
+      - name: Install Dependencies
+        run: |
+          pip install -r ${PWD}/benchmarks/apps/microbench-eor/requirements.txt
+      - name: Run EoR Microbenchmark
+        id: runcall
+        # Run should contain all the lines of code in order to run the test
+        shell: bash
+        env:
+          OS_APPLICATION_CREDENTIAL_ID: ${{ secrets.OS_APPLICATION_CREDENTIAL_ID }}
+          OS_APPLICATION_CREDENTIAL_SECRET: ${{ secrets.OS_APPLICATION_CREDENTIAL_SECRET }}
+          OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
+          OS_AUTH_TYPE: ${{ secrets.OS_AUTH_TYPE }}
+          OS_IDENTITY_API_VERSION: ${{ secrets.OS_IDENTITY_API_VERSION }}
+          OS_INTERFACE: ${{ secrets.OS_INTERFACE }}
+          OS_REGION_NAME: ${{ secrets.OS_REGION_NAME }}
+          DB_CONTAINER: ${{ vars.DB_CONTAINER }}
+          DB_FILE: ${{ vars.DB_FILE }}
+        run: |
+          # Declare Reframe variables
+          export PATH="$HOME/.local/bin:$PATH"
+          export RFM_CONFIG_FILES="${PWD}/benchmarks/reframe_config.py"
+          export RFM_USE_LOGIN_SHELL="true"
+          # Declare Spack variables
+          echo "PATH=${{runner.workspace}}/spack/bin:${PATH}" >> "${GITHUB_ENV}"
+          export SPACK_ROOT=$(which spack)
+          if [ -z "${SPACK_ROOT}" ]; then
+            source ${{runner.workspace}}/spack/share/spack/setup-env.sh
+          fi
+          export EXCALIBUR_SPACK_ENV=${{runner.workspace}}/uksrc_spack_env
+          # Start Run
+          export GH_RUNNER=${{ matrix.runner }}
+          reframe --system=${{ matrix.reframesystem }} -c ./benchmarks/apps/microbench-eor -r

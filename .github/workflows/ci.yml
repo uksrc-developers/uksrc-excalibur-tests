@@ -1,18 +1,18 @@
 name: CI
 
 on:
-  push:
-    branches: "main"
-    tags: ["*"]
-    paths:
-      - '.github/workflows/ci.yml'
-      - 'MANIFEST.in'
-      - 'pyproject.toml'
-      - 'benchmarks/reframe_config.py'
-      - 'benchmarks/examples/**'
-      - 'benchmarks/modules/**'
-      - 'benchmarks/spack/github-actions/**'
-      - 'post-processing/**'
+#  push:
+#    branches: "main"
+#    tags: ["*"]
+#    paths:
+#      - '.github/workflows/ci.yml'
+#      - 'MANIFEST.in'
+#      - 'pyproject.toml'
+#      - 'benchmarks/reframe_config.py'
+#      - 'benchmarks/examples/**'
+#      - 'benchmarks/modules/**'
+#      - 'benchmarks/spack/github-actions/**'
+#      - 'post-processing/**'
   pull_request:
     paths:
       - '.github/workflows/ci.yml'

@@ -17,7 +17,7 @@ class FftBench(CMakePackage):
     depends_on("cmake", type="build")
     depends_on("llvm", type="build")
     depends_on("openmpi", type="build")
-    depends_on("fftw")
+    depends_on("fftw +openmp")
     #    depends_on("mkl", when="+mkl")
     depends_on("cuda", when="+cuda")
     depends_on("rocfft", when="+rocm")

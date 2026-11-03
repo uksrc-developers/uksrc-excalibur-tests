@@ -1,0 +1,81 @@
+# This file works as a template for benchmarks being submitted to the runners hosted
+# on UKSRC hardware.
+#
+#
+#
+
+name: Template for tests to remote runnter
+run-name: ${{ github.actor }} is running.
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      runner-matrix:
+        description: 'Pre-computed runner matrix JSON'
+        required: false
+        type: string
+#  schedule:
+#    - cron: "0 0 * * 1"
+# "Minute Hour DayOfMonth(1-31) Month(1-12) DayOfWeek(0-6, Sun - Sat)"
+
+jobs:
+  # This searches the framework repo for all available runners and submits all workflows to them.
+  discover-runners:
+    if: ${{ inputs.runner-matrix == '' || inputs.runner-matrix == null }}
+    runs-on: ubuntu-latest  # Use GitHub-hosted for discovery
+    outputs:
+      matrix: ${{ steps.runner-retrieval.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+      - id: runner-retrieval
+        uses: ./.github/actions/runner-retrieval
+        with:
+          github-token: ${{ secrets.PAT_TOKEN }}
+
+  # All the remaining steps are examples of how steps can be run, each one must be set up for each benchmark.
+  run-test: # Name of test to run
+    needs: discover-runners
+    if: ${{ !cancelled() }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.runner-matrix || needs.discover-runners.outputs.matrix) }}
+    runs-on: [ self-hosted, "${{ matrix.runner }}" ]
+    environment: production
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/common-setup # This only installs the common software needed for the framework.
+
+      # add installation steps needed for specific test
+#      - name: Install stuff
+#        shell: bash
+#        run: |
+#          echo "Install commands"
+
+      # add steps to run the specific test
+      - name: Run stuff
+        id: runcall
+        shell: bash
+        env:
+          OS_APPLICATION_CREDENTIAL_ID: ${{ secrets.OS_APPLICATION_CREDENTIAL_ID }}
+          OS_APPLICATION_CREDENTIAL_SECRET: ${{ secrets.OS_APPLICATION_CREDENTIAL_SECRET }}
+          OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
+          OS_AUTH_TYPE: ${{ vars.OS_AUTH_TYPE }}
+          OS_IDENTITY_API_VERSION: ${{ vars.OS_IDENTITY_API_VERSION }}
+          OS_INTERFACE: ${{ vars.OS_INTERFACE }}
+          OS_REGION_NAME: ${{ vars.OS_REGION_NAME }}
+        run: |
+          # Declare Reframe variables
+          export PATH="$HOME/.local/bin:$PATH"
+          export RFM_CONFIG_FILES="${PWD}/benchmarks/reframe_config.py"
+          export RFM_USE_LOGIN_SHELL="true"
+          # Declare Spack variables
+          echo "PATH=${{runner.workspace}}/spack/bin:${PATH}" >> "${GITHUB_ENV}"
+          export SPACK_ROOT=$(which spack)
+          if [ -f "${SPACK_ROOT}/share/spack/setup-env.sh" ]; then
+            source "${SPACK_ROOT}/share/spack/setup-env.sh"
+          fi
+          export EXCALIBUR_SPACK_ENV=${{runner.workspace}}/uksrc_spack_env
+          # Start Run
+          export GH_RUNNER=${{ matrix.runner }}
+          reframe --system=${{ matrix.reframesystem }} -c ./benchmarks/apps/<TEST DIR> (-n <TEST NAME> #if only specific test)-r

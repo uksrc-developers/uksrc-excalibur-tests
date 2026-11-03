@@ -1,0 +1,41 @@
+name: Run UKSRC Microbenchmarks
+run-name: ${{ github.actor }} is running all microbenchmarks
+on:
+  workflow_dispatch: {}
+
+jobs:
+  discover-runners:
+    runs-on: ubuntu-latest  # Use GitHub-hosted for discovery
+    outputs:
+      matrix: ${{ steps.runner-retrieval.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+      - id: runner-retrieval
+        uses: ./.github/actions/runner-retrieval
+        with:
+          github-token: ${{ secrets.PAT_TOKEN }}
+
+  call-lofarint:
+    needs: discover-runners
+    uses: ./.github/workflows/cd_micro_lofarint.yml
+    with:
+      runner-matrix: ${{ needs.discover-runners.outputs.matrix }}
+    secrets: inherit
+  call-eor:
+    needs: discover-runners
+    uses: ./.github/workflows/cd_micro_eor.yml
+    with:
+      runner-matrix: ${{ needs.discover-runners.outputs.matrix }}
+    secrets: inherit
+  call-multiwave:
+    needs: discover-runners
+    uses: ./.github/workflows/cd_micro_multiwave.yml
+    with:
+      runner-matrix: ${{ needs.discover-runners.outputs.matrix }}
+    secrets: inherit
+
+  update-confluence:
+    needs: [ call-lofarint, call-eor, call-multiwave ]
+    uses: ./.github/workflows/update_confluence.yml
+    secrets: inherit
+

@@ -11,6 +11,7 @@ from astropy.io import fits
 
 @rfm.simple_test
 class MicrobenchMULTIWAVE(rfm.RunOnlyRegressionTest):
+    bench_name="MicrobenchMULTIWAVE"
     valid_systems = ['*']
     valid_prog_environs = ['default']
 
@@ -24,31 +25,25 @@ class MicrobenchMULTIWAVE(rfm.RunOnlyRegressionTest):
 
     executable = "singularity"
 
+    output_dict_list = []
+
     @run_before('setup')
     def download_code(self):
         if not os.path.isfile(os.path.join(self.multiwave_code_dir, "singularity_images/pybdsf.sif")):
             subprocess.run(
-                [
-                    "git",
-                    "clone",
-                    "https://github.com/uksrc-developers/MW-sourcefind.git",
-                    self.multiwave_code_dir
-                ]
-            )
-            subprocess.run(["mkdir", os.path.join(self.multiwave_code_dir, "singularity_images")])
+                f"git clone https://github.com/uksrc-developers/MW-sourcefind.git {self.multiwave_code_dir}",
+                shell=True)
             subprocess.run(
-                [
-                    "mv",
-                    os.path.join(self.multiwave_code_dir, "pybdsf.singularity"),
-                    os.path.join(self.multiwave_code_dir, "singularity_images/pybdsf.singularity")
-                ]
+                f"mkdir {os.path.join(self.multiwave_code_dir, 'singularity_images')}",
+                shell=True
             )
             subprocess.run(
-                ["singularity",
-                 "build",
-                 os.path.join(self.multiwave_code_dir, "singularity_images/pybdsf.sif"),
-                 os.path.join(self.multiwave_code_dir, "singularity_images/pybdsf.singularity")
-                 ]
+                    f"mv {os.path.join(self.multiwave_code_dir, 'pybdsf.singularity')} {os.path.join(self.multiwave_code_dir, 'singularity_images/pybdsf.singularity')}",
+                shell=True
+            )
+            subprocess.run(
+                f"singularity build {os.path.join(self.multiwave_code_dir, 'singularity_images/pybdsf.sif')} {os.path.join(self.multiwave_code_dir, 'singularity_images/pybdsf.singularity')}",
+                shell=True
             )
 
     @run_before('setup')
@@ -57,7 +52,7 @@ class MicrobenchMULTIWAVE(rfm.RunOnlyRegressionTest):
         if not os.path.isfile(data_set):
             file = f"https://lofar-surveys.org/public/DR2/mosaics/P000+23/low-mosaic-blanked.fits"
             file_name = data_set
-            subprocess.run(["wget", "-O", file_name, file])
+            subprocess.run(f"wget -O {file_name} {file}", shell=True)
 
     @run_before('run')
     def add_prerun_cmds(self):
@@ -65,7 +60,8 @@ class MicrobenchMULTIWAVE(rfm.RunOnlyRegressionTest):
             f"echo '#!/bin/bash' >> {self.outputdir}/ssh_job.sh",
             f"echo 'sourcefind.py --intfile low-mosaic-blanked.fits' >> {self.outputdir}/ssh_job.sh",
             f"cp {self.multiwave_data_dir}/low-mosaic-blanked.fits {self.outputdir}/low-mosaic-blanked.fits",
-            f"cd {self.outputdir}"
+            f"cd {self.outputdir}",
+            f"echo \"Workflow start: $(date '+%Y-%m-%d %H:%M:%S')\" > {self.outputdir}/output.log"
         ]
 
     @run_before('run')
@@ -78,12 +74,60 @@ class MicrobenchMULTIWAVE(rfm.RunOnlyRegressionTest):
             os.path.join(self.outputdir, "ssh_job.sh")
         ]
 
+    @run_after('run')
+    def post_run_cmd(self):
+        subprocess.run(f"echo \"Workflow end: $(date '+%Y-%m-%d %H:%M:%S')\" >> {self.outputdir}/output.log", shell=True)
+
     @sanity_function
     def validate(self):
         test_fits = fits.open(os.path.join(self.outputdir, "low-mosaic-blanked--final.srl.fits"))
         return test_fits[1].data.shape[0] > 0
 
-    @run_after('sanity')
+    @run_before("performance")
+    def output_list_dict(self):
+        """
+        In order to use the database handler perflog 'swiftdb', self.output_dict_list must be defined.
+        This dictionary should include at least:
+        - TimeOfTest [str]
+        - SystemPartition [str]
+        - <Desired Output variables> [Format Determined by entry]
+        """
+        start_str = sn.evaluate(sn.extractsingle(
+            r'Workflow start: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
+            pathlib.Path(self.outputdir) / pathlib.Path("output.log"),
+            tag=1
+        ))
+        finish_str = sn.evaluate(sn.extractsingle(
+            r'Workflow end: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
+            pathlib.Path(self.outputdir) / pathlib.Path("output.log"),
+            tag=1
+        ))
+        start = dt.strptime(start_str, "%Y-%m-%d %H:%M:%S")
+        finish = dt.strptime(finish_str, "%Y-%m-%d %H:%M:%S")
+
+        elapsed_seconds = (finish - start).total_seconds()
+
+        time_of_test = str(dt.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+        self.output_dict_list += [
+            {
+                "TimeOfTest": time_of_test,
+                "SystemPartition": f"{os.environ.get('GH_RUNNER')} - {self.current_system.name} - {self.current_partition.name}",
+                "ExecutionTime": elapsed_seconds
+            }
+        ]
+        print(self.output_dict_list)
+
+    @performance_function('notAmetric')
+    def dont_send_confluence(self):
+        return 1
+
+    @run_after('performance')
     def free_space(self):
-        subprocess.run(["rm", "-rf", os.path.join(self.outputdir, "intermediate-products")])
-        subprocess.run(f"rm {self.outputdir}/*.fits", shell=True, check=True)
+        og_dir = os.getcwd()
+        os.chdir(os.path.dirname(os.path.abspath(__file__)))
+        subprocess.run(f"rm -rf ./MULTIWAVE_Code", shell=True)
+        subprocess.run(f"rm -rf ./MULTIWAVE_Data", shell=True)
+        os.chdir(og_dir)
+        subprocess.run(f"rm -rf {os.path.join(self.outputdir, 'intermediate-products')}", shell=True)
+        subprocess.run(f"rm -f {self.outputdir}/*.fits", shell=True, check=True)

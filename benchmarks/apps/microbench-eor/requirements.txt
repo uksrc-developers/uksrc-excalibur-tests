@@ -1,0 +1,19 @@
+aipy
+astropy
+astropy-healpix
+cartopy
+gitpython
+ipython
+jinja2
+matplotlib
+multiprocess
+numpy
+pandas
+pyuvdata==2.4.5
+rich
+scipy==1.13
+scikit-learn
+six
+hera-calibration==3.6.1
+hera-pspec==0.4.0
+simpleQE @ git+https://github.com/nkern/simpleQE

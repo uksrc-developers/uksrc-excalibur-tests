@@ -1,0 +1,78 @@
+name: 'Base Install Action'
+description: 'Run basic installation steps for the benchmarking framework.'
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+    - name: Check Python version
+      id: check-python
+      shell: bash
+      run: |
+        if command -v python3 &>/dev/null && python3 --version 2>&1 | grep -qP "3\.([1-9]\d+)\."; then
+          echo "skip=true" >> $GITHUB_OUTPUT
+          python3 -m pip install --upgrade pip
+        else
+          echo "skip=false" >> $GITHUB_OUTPUT
+        fi
+    - name: Python Setup
+      if: steps.check-python.outputs.skip != 'true'
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+    - name: Install Excalibur-tests
+      id: inst_exctest
+      shell: bash
+      run: |
+        if ! pip list 2> /dev/null | grep -q 'excalibur-tests'; then
+          pip install -e .[test]
+        fi
+        if ! pip list 2> /dev/null | grep -q 'pandas'; then
+          pip install pandas
+        fi
+        if ! pip list 2> /dev/null | grep -q 'ReFrame'; then
+          pip install reframe-hpc
+        fi
+        if ! pip list 2> /dev/null | grep -q 'keystoneauth1'; then
+          pip install keystoneauth1
+        fi
+        if ! pip list 2> /dev/null | grep -q 'python-swiftclient'; then
+          pip install python-swiftclient
+        fi
+        if ! pip list 2> /dev/null | grep -q 'dotenv'; then
+          pip install dotenv
+        fi
+        if ! pip list 2> /dev/null | grep -q 'atlassian-python-api'; then
+          pip install atlassian-python-api
+        fi
+        if ! pip list 2> /dev/null | grep -q 'beautifulsoup4'; then
+          pip install beautifulsoup4
+        fi
+    - name: Find or Install Spack
+      id: find_spack
+      working-directory: ${{runner.workspace}}
+      shell: bash
+      run: |
+        export SPACK_PATH=$(which spack)
+        if [ -z $SPACK_PATH ]; then
+          if [ ! -d spack ]; then
+            git clone --depth=1 --branch=releases/v1.1 https://github.com/spack/spack.git
+          fi
+          source ${{runner.workspace}}/spack/share/spack/setup-env.sh
+          spack compiler find
+        fi
+    - name: Setup Spack env
+      id: set_spack
+      working-directory: "${{runner.workspace}}/uksrc-excalibur-tests-deploybranch"
+      shell: bash
+      run: |
+        export SPACK_ENVIRONMENT=${{runner.workspace}}/uksrc_spack_env
+        if [ ! -d $SPACK_ENVIRONMENT ]; then
+          source ${{runner.workspace}}/spack/share/spack/setup-env.sh
+          spack env create --without-view -d $SPACK_ENVIRONMENT
+          spack env activate $SPACK_ENVIRONMENT
+          spack config add 'config:install_tree:root:$env/opt/spack'
+          spack -e $SPACK_ENVIRONMENT repo add ${{runner.workspace}}/uksrc-excalibur-tests-deploybranch/benchmarks/spack/repo
+          spack external find
+        fi

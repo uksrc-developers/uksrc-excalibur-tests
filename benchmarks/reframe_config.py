@@ -1,12 +1,14 @@
-import os, sys, pathlib
+import os, sys, pathlib, logging
 import reframe.core.launchers.mpi as rfmmpi
 from pathlib import Path
+
+from reframe.core.logging import register_log_handler
 
 # Ensure the directory containing reframe_config.py is on sys.path
 CONFIG_DIR = Path(__file__).resolve().parent
 if str(CONFIG_DIR) not in sys.path:
     sys.path.insert(0, str(CONFIG_DIR))
-from modules.perf_logs import send_to_table
+from modules.perf_logs import DatabaseConnection
 
 # OpenMPI Launcher on COSMA7 Rockport network:
 # <https://www.dur.ac.uk/icc/cosma/support/rockport/>.
@@ -43,36 +45,61 @@ def spack_root_to_path():
     return spack_bindir + os.path.pathsep + path
 
 
-# _json_and_send allows for the sending of data to a Confluence table.
-def _json_and_send(record, extras, ignore_keys):
-    try:
-        with open(Path(__file__).parent / ".env") as f:
-            for line in f:
-                line = line.strip()
-                if line.startswith("#"):
-                    continue
-                key, value = line.split("=", 1)
-                key = key.strip()
-                os.environ[key] = value.strip().strip('"').strip("'")
-        bench_name = getattr(record, '__rfm_check__', None).bench_name
-        perfvars = record.__dict__.get('check_perfvars', {})
-        if isinstance(perfvars, dict) and 'dummy_perf' in perfvars:
-            content = getattr(record, '__rfm_check__', None).output_dict_list
-            for output in content:
-                send_to_table(
-                    os.getenv("ATLASSIAN_SITE"),
-                    os.getenv("CONFLUENCE_SPACE_ID"),
-                    os.getenv("ATLASSIAN_EMAIL"),
-                    os.getenv("ATLASSIAN_API_TOKEN"),
-                    bench_name,
-                    output
-                )
-        else:
-            print("Else in isinstance(perfvars)")
-    except Exception as e:
-        # Avoid crashing ReFrame on logging paths; record and continue.
-        print(f"[perflog delegate] ERROR: {e}")
-    return None
+# swiftdb data sending updates a sql database object on an OpenStack swift object store.
+class SwiftDBHandler(logging.Handler):
+    def __init__(self, container, db_file, os_options):
+        super().__init__()
+        self.container = container
+        self.db_file = db_file
+        self.os_options = os_options
+        self.table_name = None
+        self.pending_records = []
+
+    def emit(self, record):
+        self.table_name = getattr(record, '__rfm_check__', None).bench_name
+        # Just collect records - don't hit the database yet
+        content = getattr(record, '__rfm_check__', None).output_dict_list
+        for output in content:
+            self.pending_records.append({
+                **output
+            })
+
+    def flush(self):
+        if not self.pending_records:
+            return
+
+        with DatabaseConnection(
+                container=self.container,
+                db_file=self.db_file,
+                os_options=self.os_options
+        ) as db_c:
+            # Create table if needed
+            table_creation_string = f"CREATE TABLE IF NOT EXISTS {self.table_name} (testID INTEGER PRIMARY KEY AUTOINCREMENT"
+            for k, v in self.pending_records[0].items():
+                table_creation_string += f", {k} {('TEXT' if type(v)==str else 'REAL')} NOT NULL"
+            table_creation_string+=");"
+            db_c.cur.execute(table_creation_string)
+            db_c.con.commit()
+            execute_many_string = f"""INSERT INTO {self.table_name} ({", ".join(self.pending_records[0].keys())}) VALUES (:{", :".join(self.pending_records[0].keys())})"""
+            # Insert all pending records
+            db_c.cur.executemany(execute_many_string, self.pending_records)
+            db_c.con.commit()
+        self.pending_records = []
+
+    def close(self):
+        self.flush()
+        super().close()
+
+@register_log_handler("swiftdb")
+def _create_handler(site_config, config_prefix):
+    return SwiftDBHandler(
+        container=os.environ.get('DB_CONTAINER', 'excalibur_tests_results'),
+        db_file=os.environ.get('DB_FILE', 'reframe_results.db'),
+        os_options={
+            "interface": os.environ.get("OS_INTERFACE"),
+            "region_name": os.environ.get('OS_REGION_NAME'),
+        }
+    )
 
 
 site_configuration = {
@@ -839,10 +866,8 @@ site_configuration = {
                     'append': True
                 },
                 {
-                    'type': 'httpjson',
-                    'url': 'https://uksrc.atlassian.net',
+                    'type': 'swiftdb',
                     'level': 'info',
-                    'json_formatter': _json_and_send,
                     'debug': False,
                     'extras': {'facility': 'reframe'},
                     'ignore_keys': [],

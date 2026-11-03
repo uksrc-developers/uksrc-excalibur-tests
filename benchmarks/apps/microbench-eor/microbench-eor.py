@@ -11,6 +11,7 @@ from astropy.io import fits
 
 @rfm.simple_test
 class MicrobenchEOR(rfm.RunOnlyRegressionTest):
+    bench_name="MicrobenchEOR"
     valid_systems = ['*']
     valid_prog_environs = ['default']
 
@@ -26,18 +27,14 @@ class MicrobenchEOR(rfm.RunOnlyRegressionTest):
 
     executable = "apptainer"
 
+    output_dict_list = []
+
     @run_before('setup')
     def build_singularity(self):
         if not os.path.isfile(os.path.join(self.eor_code_dir, "singularity_images/hera-pspec-mambaorg.sif")):
             og_dir = os.getcwd()
             os.chdir(os.path.join(self.eor_code_dir, "singularity_images"))
-            subprocess.run(
-                ["singularity",
-                 "build",
-                 "hera-pspec-mambaorg.sif",
-                 "hera-pspec-mambaorg.def"
-                 ]
-            )
+            subprocess.run(f"singularity build hera-pspec-mambaorg.sif hera-pspec-mambaorg.def", shell=True)
             os.chdir(og_dir)
 
     @run_before('setup')
@@ -46,11 +43,12 @@ class MicrobenchEOR(rfm.RunOnlyRegressionTest):
         if not os.path.isfile(data_set):
             file = f"https://object.arcus.openstack.hpc.cam.ac.uk/swift/v1/AUTH_7ac3c0a502cd46c783b2128116165566/microbench_data/EoR/NF_HERA_Dipole_power_beam_healpix.fits"
             file_name = data_set
-            subprocess.run(["wget", "-O", file_name, file])
+            subprocess.run(f"wget -O {file_name} {file}", shell=True)
 
     @run_before('run')
     def add_prerun_cmds(self):
         self.prerun_cmds = [
+            f"echo \"Workflow start: $(date '+%Y-%m-%d %H:%M:%S')\" > {self.outputdir}/output.log"
         ]
 
     @run_before('run')
@@ -64,6 +62,10 @@ class MicrobenchEOR(rfm.RunOnlyRegressionTest):
             os.path.join(self.eor_code_dir, "scripts/pspec_params_micro.yaml")
         ]
 
+    @run_after('run')
+    def post_run_cmd(self):
+        subprocess.run(f"echo \"Workflow end: $(date '+%Y-%m-%d %H:%M:%S')\" >> {self.outputdir}/output.log", shell=True)
+
     @sanity_function
     def validate(self):
         with open(os.path.join(self.stagedir, "rfm_job.out")) as myfile:
@@ -72,6 +74,49 @@ class MicrobenchEOR(rfm.RunOnlyRegressionTest):
             else:
                 return False
 
-    @run_after('sanity')
+    @run_before("performance")
+    def output_list_dict(self):
+        """
+        In order to use the database handler perflog 'swiftdb', self.output_dict_list must be defined.
+        This dictionary should include at least:
+        - TimeOfTest [str]
+        - SystemPartition [str]
+        - <Desired Output variables> [Format Determinable]
+        """
+        start_str = sn.evaluate(sn.extractsingle(
+            r'Workflow start: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
+            pathlib.Path(self.outputdir) / pathlib.Path("output.log"),
+            tag=1
+        ))
+        finish_str = sn.evaluate(sn.extractsingle(
+            r'Workflow end: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})',
+            pathlib.Path(self.outputdir) / pathlib.Path("output.log"),
+            tag=1
+        ))
+        start = dt.strptime(start_str, "%Y-%m-%d %H:%M:%S")
+        finish = dt.strptime(finish_str, "%Y-%m-%d %H:%M:%S")
+
+        elapsed_seconds = (finish - start).total_seconds()
+
+        time_of_test = str(dt.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+        self.output_dict_list += [
+            {
+                "TimeOfTest": time_of_test,
+                "SystemPartition": f"{os.environ.get('GH_RUNNER')} - {self.current_system.name} - {self.current_partition.name}",
+                "ExecutionTime": elapsed_seconds
+            }
+        ]
+        print(self.output_dict_list)
+
+    @performance_function('notAmetric')
+    def dont_send_confluence(self):
+        return 1
+
+    @run_after('performance')
     def free_space(self):
-        subprocess.run(["rm", "-rf", os.path.join(self.outputdir, "outputs")])
+        og_dir = os.getcwd()
+        os.chdir(os.path.join(self.eor_code_dir, "singularity_images"))
+        subprocess.run(f"rm -f hera-pspec-mambaorg.sif", shell=True)
+        subprocess.run(f"rm -f {os.path.join(self.eor_data_dir, 'NF_HERA_Dipole_power_beam_healpix.fits')}", shell=True)
+        os.chdir(og_dir)

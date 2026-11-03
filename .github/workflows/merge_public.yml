@@ -1,0 +1,46 @@
+name: Merge with Public repo
+on:
+  schedule:
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+
+jobs:
+  sync-public:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout private repo
+        uses: actions/checkout@v6
+        with:
+          ref: dev
+          fetch-depth: 0
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add public repo as remote
+        run: |
+          git remote add public https://github.com/uksrc-developers/uksrc-excalibur-tests.git
+          git fetch public
+
+      - name: Merge changes
+        run: |
+            git merge public/main \
+            -X ours \
+            --allow-unrelated-histories \
+            -m "Sync with public repo $(date +%Y-%m-%d)" || \
+            echo "MERGE_STATUS=conflicts" >> $GITHUB_ENV
+
+      - name: Force keep private files
+        run: |
+          git checkout HEAD -- .github/workflows/merge_public.yml
+          git add .
+          if [ -n "$(git status --porcelain)" ]; then
+            git commit -m "Preserve private-specific files"
+          fi
+
+      - name: Push to dev branch
+        run: git push origin dev

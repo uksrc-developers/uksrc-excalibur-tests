@@ -12,7 +12,7 @@ from benchmarks.modules.utils import SpackTest
 NUMBER_OF_TRANSFORMS = '7'
 NUMBER_OF_REPEATS = '10'
 
-class FfftBenmchmarkBase(SpackTest):
+class FftBenmchmarkBase(SpackTest):
     # Systems and programming environments where to run this benchmark.
     # Systems/partitions can be identified by their features, `+feature` is a
     # partition which has the named feature, `-feature` is a partition which
@@ -38,7 +38,7 @@ class FfftBenmchmarkBase(SpackTest):
     fft_output_file = "./default.txt"
 
     def __init__(self):
-        self.bench_name = "FFT Bench"
+        self.bench_name = "FFT_Bench"
         self.output_dict_list = []
 
     @run_before('run')
@@ -64,21 +64,28 @@ class FfftBenmchmarkBase(SpackTest):
 
     @run_before("performance")
     def output_list_dict(self):
-        pattern = r'(?P<Library>\S+), (?P<Mem_Size>\S+), (?P<Avg_time>\S+),'
+        """
+        In order to use the database handler perflog 'swiftdb', self.output_dict_list must be defined.
+        This dictionary should include at least:
+        - TimeOfTest [str]
+        - SystemPartition [str]
+        - <Desired Output variables> [Format Determinable]
+        """
+        pattern = r'(?P<Library>\S+), (?P<Mem_Size>\S+), (?P<ExecutionTime>\S+),'
         output_list = sn.extractall(pattern,
                                     pathlib.Path(self.stagedir) / self.fft_output_file,
-                                    ['Library', 'Mem_Size', 'Avg_time'],
+                                    ['Library', 'Mem_Size', 'ExecutionTime'],
                                     [str, float, float])
         time_of_test = str(dt.now().strftime("%Y-%m-%d-%H:%M"))
 
         for output in output_list:
             self.output_dict_list += [
                 {
-                    "Date": time_of_test,
-                    "System - Partition": f"{self.current_system.name} - {self.current_partition.name}",
+                    "TimeOfTest": time_of_test,
+                    "SystemPartition": f"{os.environ.get('GH_RUNNER')} - {self.current_system.name} - {self.current_partition.name}",
                     "Library": output[0],
-                    "Array size [MB]": output[1],
-                    "Avg. Time [ms]":output[2]
+                    "ArraySizeMB": output[1],
+                    "ExecutionTime":output[2]
                 }
             ]
         return
@@ -89,7 +96,7 @@ class FfftBenmchmarkBase(SpackTest):
 
 
 @rfm.simple_test
-class FftBenchmarkCPU(FfftBenmchmarkBase):
+class FftBenchmarkCPU(FftBenmchmarkBase):
     valid_systems = ['*']
     spack_spec = 'fft-bench@0.3+fftw~cuda~rocm'
     spack_logfile = 'spack-build-log-fftw.txt'
@@ -107,27 +114,27 @@ class FftBenchmarkCPU(FfftBenmchmarkBase):
     def setup_variables(self):
         self.num_tasks = self.tasks
         self.num_cpus_per_task = self.cpus_per_task
-        self.tags.add("fftw")
+        self.tags.add("+fftw")
         self.env_vars['OMP_NUM_THREADS'] = f'{self.num_cpus_per_task}'
 
-@rfm.simple_test
-class FftBenchmarkMKL(FfftBenmchmarkBase):
-    valid_systems = ['-gpu']
-    spack_spec = 'fft-bench@0.3+mkl'
-    fft_output_file = "./MKL_only.txt"
-    executable_opts = ["-o", fft_output_file, "-f", "-r", NUMBER_OF_TRANSFORMS, "-c", NUMBER_OF_REPEATS]
+#@rfm.simple_test
+#class FftBenchmarkMKL(FftBenmchmarkBase):
+#    valid_systems = ['-gpu']
+#    spack_spec = 'fft-bench@0.3+mkl'
+#    fft_output_file = "./MKL_only.txt"
+#    executable_opts = ["-o", fft_output_file, "-f", "-r", NUMBER_OF_TRANSFORMS, "-c", NUMBER_OF_REPEATS]
+#
+#    @run_after('setup')
+#    def setup_variables(self):
+#        self.num_tasks = self.tasks
+#        self.num_cpus_per_task = self.cpus_per_task
+#        self.tags.add("mkl")
+#        self.env_vars['OMP_NUM_THREADS'] = f'{self.num_cpus_per_task}'
 
-    @run_after('setup')
-    def setup_variables(self):
-        self.num_tasks = self.tasks
-        self.num_cpus_per_task = self.cpus_per_task
-        self.tags.add("mkl")
-        self.env_vars['OMP_NUM_THREADS'] = f'{self.num_cpus_per_task}'
-
 @rfm.simple_test
-class FftBenchmarkCUDA(FfftBenmchmarkBase):
+class FftBenchmarkCUDA(FftBenmchmarkBase):
     valid_systems = ['+gpu +cuda']
-    spack_spec = 'fft-bench@0.3+cuda~rocm'
+    spack_spec = 'fft-bench@0.3+fftw+cuda~rocm'
     spack_logfile = 'spack-build-log-cuda.txt'
     num_gpus_per_node = 1
 
@@ -138,14 +145,14 @@ class FftBenchmarkCUDA(FfftBenmchmarkBase):
     def setup_variables(self):
         self.num_tasks = self.tasks
         self.num_cpus_per_task = self.cpus_per_task
-        self.tags.add("fftw+cuda")
+        self.tags.add("+fftw+cuda")
         self.env_vars['OMP_NUM_THREADS'] = f'{self.num_cpus_per_task}'
         self.extra_resources['gpu'] = {'num_gpus_per_node': self.num_gpus_per_node}
 
 @rfm.simple_test
-class FftBenchmarkROCM(FfftBenmchmarkBase):
+class FftBenchmarkROCM(FftBenmchmarkBase):
     valid_systems = ['+gpu +rocm']
-    spack_spec = 'fft-bench@0.3+rocm~cuda'
+    spack_spec = 'fft-bench@0.3+fftw+rocm~cuda'
     spack_logfile = 'spack-build-log-rocm.txt'
     num_gpus_per_node = 1
 
@@ -156,6 +163,6 @@ class FftBenchmarkROCM(FfftBenmchmarkBase):
     def setup_variables(self):
         self.num_tasks = self.tasks
         self.num_cpus_per_task = self.cpus_per_task
-        self.tags.add("fftw+rocm")
+        self.tags.add("+fftw+rocm")
         self.env_vars['OMP_NUM_THREADS'] = f'{self.num_cpus_per_task}'
         self.extra_resources['gpu'] = {'num_gpus_per_node': self.num_gpus_per_node}

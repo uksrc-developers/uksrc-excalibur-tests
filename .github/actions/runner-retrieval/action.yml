@@ -1,0 +1,41 @@
+name: 'Runner Matrix Retriever'
+description: 'Retrieves the matrix of runners to use, as well as the reframe system information from runner keywords'
+inputs:
+  github-token:
+    description: 'GitHub token with repo access'
+    required: true
+outputs:
+  matrix:
+    description: "JSON of the runner matrix to be used by the deployment."
+    value: ${{ steps.set-matrix.outputs.matrix }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+    - name: Get Self-Hosted Runners
+      id: set-matrix
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        # Query GitHub API for self-hosted runners
+        RUNNERS=$(curl -s -H "Authorization: token $GH_TOKEN" \
+          "https://api.github.com/repos/${{ github.repository }}/actions/runners" \
+            | jq -c '
+            [
+              .runners[] 
+              | select(.status == "online")
+              | (.labels | map(.name)) as $all_labels
+              | {
+                runner: ($all_labels[] | select(startswith("runner_")))
+              } + (
+                $all_labels 
+                | map(select(startswith("runner_") | not) | select(contains("_")))
+                | map(split("_") | {(.[0]): (.[1:] | join("_"))})
+                | add // {}
+              )
+            ]
+          ')
+        echo "matrix=$RUNNERS" >> $GITHUB_OUTPUT
+        echo "Found runners with metadata: $RUNNERS"
