@@ -1,6 +1,14 @@
 # moved from utils.py to separate the pandas dependency
+from .utils import *
 
 import pandas as pd
+
+import sys
+import json
+import uuid
+import requests
+from typing import AnyStr, Dict
+from requests.auth import HTTPBasicAuth
 
 def read_perflog(path):
     """ Return a pandas dataframe from a ReFrame performance log.
@@ -125,3 +133,186 @@ def tabulate_last_perf(test, index, perf_var, root='../../perflogs'):
     df = df.pivot(index=index, columns='case', values='perf_value')
 
     return df
+
+#
+def iter_tables(node):
+    stack = [node]
+    while stack:
+        cur = stack.pop()
+        if isinstance(cur, dict):
+            if cur.get("type") == "table":
+                yield cur
+            for child in cur.get("content", []) or []:
+                stack.append(child)
+        elif isinstance(cur, list):
+            stack.extend(cur)
+
+def get_table_fragment_name_and_id(table_node):
+    name = None
+    local_id = None
+    for m in table_node.get("marks", []) or []:
+        if m.get("type") == "fragment":
+            attrs = m.get("attrs") or {}
+            name = attrs.get("name") or name
+            local_id = attrs.get("localId") or local_id
+    return name, local_id
+
+def table_cell_text(text: str):
+    return {
+        "type": "tableCell",
+        "attrs": {"colspan": 1, "rowspan": 1},
+        "content": [{"type": "paragraph", "content": ([{"type": "text", "text": text}] if text else "")}],
+    }
+
+def count_columns(table_node: dict) -> int:
+    rows = table_node.get("content") or []
+    if not rows:
+        return 0
+    first_row = rows[0]
+    return len(first_row.get("content") or [])
+
+def build_new_table(table_name: str, content: Dict) -> dict:
+    table_node = {
+        "type": "table",
+        "attrs": {
+            'layout': 'align-start',
+            'width': 941.0,
+        },
+        "marks": [
+            {
+                'type': 'fragment',
+                'attrs': {
+                    "name": table_name,
+                    "localId": str(uuid.uuid4())
+                }
+            }
+        ],
+        "content": [
+            {
+                "type": "tableRow",
+                "content": []
+            },
+            {
+                "type": "tableRow",
+                "content": []
+            }
+        ]
+    }
+    for k, v in content.items():
+        table_node["content"][0]["content"] += [{
+            'type': 'tableHeader',
+            'attrs': {
+                'colspan': 1,
+                'rowspan': 1
+            },
+            'content': [
+                {
+                    'type': 'paragraph',
+                    'content': [
+                        {
+                            'text': k,
+                            'type': 'text',
+                            'marks': [
+                                {
+                                    'type': 'strong'
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }]
+        table_node["content"][1]["content"] += [{
+            'type': 'tableCell',
+            'attrs': {
+                'colspan': 1,
+                'rowspan': 1
+            },
+            'content': [
+                {
+                    'type': 'paragraph',
+                    'content': [
+                        {
+                            'text': v,
+                            'type': 'text',
+                        }
+                    ]
+                }
+            ]
+        }]
+    return table_node
+
+def send_to_table(site: AnyStr, space_id: AnyStr, email: AnyStr, api_token: AnyStr, table_name: AnyStr, content: Dict):
+    assert api_token.strip() == api_token, "API token has leading/trailing whitespace/newlines"
+    url = f"{site}/wiki/api/v2/pages/{space_id}?body-format=atlas_doc_format"
+    response = requests.get(
+        url,
+        headers={"Accept": "application/json", "User-Agent": "step1-list-tables/0.1"},
+        auth=HTTPBasicAuth(email, api_token),
+        timeout=30,
+    )
+    if response.status_code != 200:
+        print(response.text[:800])
+        sys.exit(2)
+    page = response.json()
+    title = page.get("title")
+    version_num = (page.get("version") or {}).get("number") or 0
+    value = page.get("body", {}).get("atlas_doc_format", {}).get("value")
+    adf = json.loads(value) if isinstance(value, str) else value
+    table_of_interest = None
+    for i, tbl in enumerate(iter_tables(adf), start=1):
+        name, local_id = get_table_fragment_name_and_id(tbl)
+        if name == table_name:
+            table_of_interest = tbl
+            break
+
+    if not bool(table_of_interest):
+        new_table = build_new_table(table_name, content)
+        # PUT back with version+1 (ADF must be stringified in v2 API)
+        adf["content"].append({
+            "type": "paragraph",
+            'content': [
+                {
+                    'text': f'{table_name}',
+                    'type': 'text'
+                }
+            ],
+            'marks': [
+                {
+                    'type': 'strong'
+                }
+            ]
+        })
+        adf["content"].append(new_table)
+    else:
+        ncols = count_columns(table_of_interest)
+        if ncols != len(content):
+            raise ValueError(f"{ncols} Columns found, but content of {content}, does not match.")
+        new_cells = [table_cell_text(content_text) for content_text in content.values()]
+        new_row = {"type": "tableRow", "content": new_cells}
+        table_of_interest.setdefault("content", []).append(new_row)
+
+    # PUT back with version+1 (ADF must be stringified in v2 API)
+    put_url = f"{site}/wiki/api/v2/pages/{space_id}"
+    payload = {
+        "id": space_id,
+        "status": "current",
+        "title": title,
+        "version": {"number": version_num + 1},
+        "body": {"atlas_doc_format": {"value": json.dumps(adf), "representation": "atlas_doc_format"}},
+    }
+
+    pr = requests.put(
+        put_url,
+        headers={"Accept": "application/json", "Content-Type": "application/json",
+                 "User-Agent": "step2-append-row/0.1"},
+        auth=HTTPBasicAuth(email, api_token),
+        data=json.dumps(payload),
+        timeout=30,
+    )
+
+    if pr.status_code not in (200, 202):
+        print(pr.text[:1000])
+        sys.exit(4)
+    return
+#

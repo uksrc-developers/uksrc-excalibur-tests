@@ -1,6 +1,12 @@
-import os
+import os, sys, pathlib
 import reframe.core.launchers.mpi as rfmmpi
+from pathlib import Path
 
+# Ensure the directory containing reframe_config.py is on sys.path
+CONFIG_DIR = Path(__file__).resolve().parent
+if str(CONFIG_DIR) not in sys.path:
+    sys.path.insert(0, str(CONFIG_DIR))
+from modules.perf_logs import send_to_table
 
 # OpenMPI Launcher on COSMA7 Rockport network:
 # <https://www.dur.ac.uk/icc/cosma/support/rockport/>.
@@ -35,6 +41,34 @@ def spack_root_to_path():
 
     # `spack_bindir` isn't in PATH already, prepend to it.
     return spack_bindir + os.path.pathsep + path
+
+
+# _json_and_send allows for the sending of data to a Confluence table.
+def _json_and_send(record, extras, ignore_keys):
+    try:
+        content = getattr(record, '__rfm_check__', None).output_dict_list
+        bench_name = getattr(record, '__rfm_check__', None).bench_name
+        with open(Path(__file__).parent / ".env") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("#"):
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                os.environ[key] = value.strip().strip('"').strip("'")
+        for output in content:
+            send_to_table(
+                os.getenv("ATLASSIAN_SITE"),
+                os.getenv("CONFLUENCE_SPACE_ID"),
+                os.getenv("ATLASSIAN_EMAIL"),
+                os.getenv("ATLASSIAN_API_TOKEN"),
+                bench_name,
+                output
+            )
+    except Exception as e:
+        # Avoid crashing ReFrame on logging paths; record and continue.
+        print(f"[perflog delegate] ERROR: {e}")
+    return None
 
 
 site_configuration = {
@@ -423,7 +457,7 @@ site_configuration = {
                     'descr': 'Compute nodes',
                     'scheduler': 'slurm',
                     'launcher': 'mpiexec',
-                    'access': ['--partition=cosma8'],
+                    'access': ['--partition=cosma8', '--account=durham'],
                     'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
                     'sched_options': {
                         'use_nodes_option': True,
@@ -435,7 +469,152 @@ site_configuration = {
                         'num_sockets': 2,
                         'num_cpus_per_socket': 64,
                     },
-                }
+                }, # Basic Compute node
+                {
+                    'name': 'ska-node',
+                    'descr': 'Compute nodes',
+                    'scheduler': 'slurm',
+                    'launcher': 'mpiexec',
+                    'access': ['--partition=cosma8-ska', '--account=durham'],
+                    'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
+                    'sched_options': {
+                        'use_nodes_option': True,
+                    },
+                    'max_jobs': 64,
+                    'processor': {
+                        'num_cpus': 128,
+                        'num_cpus_per_core': 1,
+                        'num_sockets': 2,
+                        'num_cpus_per_socket': 64,
+                    },
+                }, # SKA node
+                {
+                    'name': 'ska2-node',
+                    'descr': 'Compute nodes',
+                    'scheduler': 'slurm',
+                    'launcher': 'mpiexec',
+                    'access': ['--partition=cosma8-ska2', '--account=durham'],
+                    'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
+                    'sched_options': {
+                        'use_nodes_option': True,
+                    },
+                    'max_jobs': 64,
+                    'processor': {
+                        'num_cpus': 128,
+                        'num_cpus_per_core': 1,
+                        'num_sockets': 2,
+                        'num_cpus_per_socket': 64,
+                    },
+                }, # SKA2 nodes
+                {
+                    'name': 'dine2-node',
+                    'descr': 'requires project code do015 in order to access: gc[001-008] with 0-8x NVIDIA A30 GPUs',
+                    'scheduler': 'slurm',
+                    'launcher': 'mpiexec',
+                    'access': ['--partition=dine2', '--account=durham'],
+                    'features': ['gpu', 'cuda'],
+                    'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
+                    'sched_options': {
+                        'use_nodes_option': True,
+                    },
+                    'max_jobs': 32,
+                    'processor': {
+                        'num_cpus': 64,
+                        'num_cpus_per_core': 1,
+                        'num_sockets': 2,
+                        'num_cpus_per_socket': 32,
+                    },
+                    'resources': [
+                        {
+                            'name': 'gpu',
+                            'options': ['--constraint=gpu']
+                        },
+                    ],
+                }, # dine2 nodes
+                {
+                    'name': 'shm-node',
+                    'descr': 'requires project code do016 in order to access: mad04 & mad05 with 0-3x NVIDIA A100 GPUs (4TB RAM)',
+                    'scheduler': 'slurm',
+                    'launcher': 'mpiexec',
+                    'access': ['--partition=cosma8-shm', '--account=do016'],
+                    'features': ['gpu', 'cuda'],
+                    'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
+                    'sched_options': {
+                        'use_nodes_option': True,
+                    },
+                    'max_jobs': 64,
+                    'processor': {
+                        'num_cpus': 128,
+                        'num_cpus_per_core': 1,
+                        'num_sockets': 2,
+                        'num_cpus_per_socket': 64,
+                    },
+                    'resources': [
+                        {
+                            'name': 'gpu',
+                            'options': ['--constraint=gpu']
+                        },
+                    ],
+                }, # NVIDIA A100 nodes
+                {
+                    'name': 'shm2-node',
+                    'descr': 'requires project code do018 in order to access: ga004 with 1x AMD MI100 GPU, ga005 and ga006 with 2x AMD MI200 GPUs',
+                    'scheduler': 'slurm',
+                    'launcher': 'mpiexec',
+                    'features': ['gpu', 'rocm'],
+                    'access': ['--partition=cosma8-shm2', '--account=do018'],
+                    'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
+                    'sched_options': {
+                        'use_nodes_option': True,
+                    },
+                    'max_jobs': 64,
+                    'processor': {
+                        'num_cpus': 128,
+                        'num_cpus_per_core': 1,
+                        'num_sockets': 2,
+                        'num_cpus_per_socket': 64,
+                    },
+                    'resources': [
+                        {
+                            'name': 'gpu',
+                            'options': ['--constraint=gpu']
+                        },
+                    ],
+                }, # AMD A100 nodes
+                {
+                    'name': 'mi300x-node',
+                    'descr': 'requires project code do018 in order to access: ga007 8x AMD MI300 GPUs',
+                    'scheduler': 'slurm',
+                    'launcher': 'mpiexec',
+                    'access': ['--partition=mi300x', '--account=do018'],
+                    'features': ['gpu', 'rocm'],
+                    'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
+                    'sched_options': {
+                        'use_nodes_option': True,
+                    },
+                    'max_jobs': 64,
+                    'processor': {
+                        'num_cpus': 128,
+                        'num_cpus_per_core': 1,
+                        'num_sockets': 2,
+                        'num_cpus_per_socket': 64,
+                    },
+                    'resources': [
+                        {
+                            'name': 'gpu',
+                            'options': ['--constraint=gpu']
+                        },
+                    ],
+                }, # MI300x node
+                #{
+                #    'name': 'cosma8-gracehopper-node',
+                #    'descr': 'requires project code do016 in order to access: gn003 with NVIDIA Grace-Hopper (ARM) system',
+                #    'scheduler': 'slurm',
+                #    'launcher': 'mpiexec',
+                #    'access': ['--partition=gracehopper', '--account=do016'],
+                #    'features': ['gpu', 'cuda'],
+                #    'environs': ['default', 'intel20-mpi-durham', 'intel20_u2-mpi-durham', 'intel19-mpi-durham', 'intel19_u3-mpi-durham'],
+                #}
             ]
         },  # end cosma8
         {
@@ -480,7 +659,7 @@ site_configuration = {
                     'resources': [
                         {
                             'name': 'gpu',
-                            'options': ['--gres=gpu:{num_gpus_per_node}']
+                            'options': ['--gres=gpu:{num_gpus_per_node}', '--constraint=gpu']
                         },
                     ],
                 },
@@ -654,6 +833,15 @@ site_configuration = {
                         '%(check_perf_upper_thres)s|'
                     ),
                     'append': True
+                },
+                {
+                    'type': 'httpjson',
+                    'url': 'https://uksrc.atlassian.net',
+                    'level': 'info',
+                    'json_formatter': _json_and_send,
+                    'debug': False,
+                    'extras': {'facility': 'reframe'},
+                    'ignore_keys': [],
                 }
             ]
         }

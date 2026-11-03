@@ -13,6 +13,7 @@ perflogs/
 apps/castep/downloads/
 apps/wrf/downloads/
 apps/gromacs/downloads/
+benchmarks/.env
 
 # other
 setup/.sslconfig

@@ -4,6 +4,10 @@
     It should be straightforward to run on a different platform, the requirements are  `gcc 4.5`, `git 2.39` and `python 3.7` or later. 
 	(for the later parts you also need `make`, `autotools`, `cmake` and `spack` but these can be installed locally).
     Before proceeding to install ReFrame, we recommend creating a python virtual environment to avoid clashes with other installed python packages.
+    First load a newer python module.
+    ```bash
+    module swap python/3.10.12
+    ```
 
 === "ARCHER2"
 
@@ -15,7 +19,7 @@
     module load cray-python
     ```
 
-Create an environment and activate it with
+Then create an environment and activate it with
 
 ```bash
 python3 -m venv reframe_tutorial
