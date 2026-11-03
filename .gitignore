@@ -33,6 +33,8 @@ site/
 #emacs backups
 *~
 
-
 # vim
 .*.swp
+
+# idea
+.idea
