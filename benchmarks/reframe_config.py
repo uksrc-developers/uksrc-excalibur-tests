@@ -134,42 +134,39 @@ class _KubernetesJob(Job):
     def cancelled(self):
         return self._cancelled
 
-
 @register_scheduler('k8s')
 class KubernetesJobScheduler(JobScheduler):
-    '''
-    Scheduler class in order to use kubernetes as a scheduler under the flag 'k8s'.
-    usage in `site_configuration` is as follows
-    "
-    partitions:[
+    '''Kubernetes job scheduler for ReFrame.
+
+    Submits tests as Kubernetes batch jobs using kubectl. Intended for use
+    with tests that inherit from ContainerTest.
+
+    Any scheduler that submits container jobs should set:
+        container_scheduler = True
+
+    This convention allows ContainerTest (and its subclasses) to detect
+    container-aware schedulers without hardcoding scheduler names.
+
+    Usage in site_configuration partitions:
         {
-            - name: <partition name>
-              scheduler: 'k8s'
-              launcher: 'local'
-              access:
-                - '--image=<base image>:latest'
-                - '--namespace=benchmarks'
-                # - '--volume=pvc-name:/workdir' # IF k8s nodes have shared filesystem access to the ReFrame host location
-                # - '--registry=registry.example.com/benchmarks' ~ IF k8s nodes don't have shared filesystem access to the ReFrame host location
-                - <other access parameters>
-              <other partition parameters>
-        },
-        {<Other partition configurations>}
-        ]
+            'name': '<partition name>',
+            'scheduler': 'k8s',
+            'launcher': 'local',
+            'access': [
+                '--image=<image>:latest',
+                '--namespace=benchmarks',
+            ],
+        }
     '''
-    @staticmethod
-    def _registry_from_options(job):
-        for opt in (*job.sched_access, *job.options, *job.cli_options):
-            if opt.startswith('--registry='):
-                return opt.split('=', 1)[1]
-        return None
+
+    container_scheduler = True
 
     @staticmethod
-    def _volume_from_options(job):
+    def _namespace_from_options(job):
         for opt in (*job.sched_access, *job.options, *job.cli_options):
-            if opt.startswith('--volume='):
+            if opt.startswith('--namespace='):
                 return opt.split('=', 1)[1]
-        return None
+        return 'default'
 
     @staticmethod
     def _pull_policy_from_options(job):
@@ -178,116 +175,19 @@ class KubernetesJobScheduler(JobScheduler):
                 return opt.split('=', 1)[1]
         return None
 
-    @staticmethod
-    def _is_build_job(job):
-        return job.script_filename == 'rfm_build.sh'
-
-    @staticmethod
-    def _built_image_path(job):
-        return os.path.join(job.workdir, '_k8s_built_image')
-
-    def _build_and_push(self, job, registry):
-        base_image = self._image_from_options(job)
-        tag = f'{registry}/{toalphanum(job.name).lower()}:latest'
-
-        dockerfile = os.path.join(job.workdir, 'Dockerfile')
-        with open(dockerfile, 'w') as f:
-            f.write(f'FROM {base_image}\n')
-            f.write(f'COPY . {job.workdir}\n')
-            f.write(f'WORKDIR {job.workdir}\n')
-            f.write(f'RUN /bin/bash {job.script_filename}\n')
-
-        osext.run_command(
-            f'docker build -t {tag} {job.workdir}', check=True
-        )
-        osext.run_command(
-            f'docker push {tag}', check=True
-        )
-
-        with open(self._built_image_path(job), 'w') as f:
-            f.write(tag)
-
-        self.log(f'built and pushed image: {tag}')
-
-    def _build_manifest(self, job, image=None):
-        job_name = toalphanum(job.name).lower()[:60]
-        namespace = job._namespace or 'default'
+    def _build_manifest(self, job):
+        job_name = job._pod_name
+        namespace = job._namespace
 
         container = {
             'name': job_name,
-            'image': image or self._image_from_options(job),
-            'command': ['/bin/bash', job.script_filename],
-            'workingDir': job.workdir,
+            'image': job.container_image,
+            'command': ['/bin/bash', '-c', job.container_cmd],
         }
 
         pull_policy = self._pull_policy_from_options(job)
         if pull_policy:
             container['imagePullPolicy'] = pull_policy
-
-        if job.num_cpus_per_task:
-            container['resources'] = {
-                'requests': {'cpu': str(job.num_cpus_per_task)},
-                'limits': {'cpu': str(job.num_cpus_per_task)},
-            }
-
-        pod_spec = {
-            'restartPolicy': 'Never',
-            'containers': [container],
-        }
-
-        # Add volume mount if configured
-        volume = self._volume_from_options(job)
-        if volume:
-            pvc_name, mount_path = volume.split(':', 1)
-            container['volumeMounts'] = [
-                {'name': 'shared', 'mountPath': mount_path}
-            ]
-            pod_spec['volumes'] = [
-                {'name': 'shared',
-                 'persistentVolumeClaim': {'claimName': pvc_name}}
-            ]
-
-        job_spec = {
-            'backoffLimit': 0,
-            'template': {'spec': pod_spec},
-        }
-
-        if job.time_limit is not None:
-            job_spec['activeDeadlineSeconds'] = int(job.time_limit)
-
-        return {
-            'apiVersion': 'batch/v1',
-            'kind': 'Job',
-            'metadata': {'name': job_name, 'namespace': namespace},
-            'spec': job_spec,
-        }
-
-    def make_job(self, *args, **kwargs):
-        return _KubernetesJob(*args, **kwargs)
-
-    def emit_preamble(self, job):
-        return [f'cd {job.workdir}']
-
-    def allnodes(self):
-        raise NotImplementedError(
-            'k8s backend does not support node listing'
-        )
-
-    def filternodes(self, job, nodes):
-        raise NotImplementedError(
-            'k8s backend does not support node filtering'
-        )
-
-    def _build_manifest(self, job):
-        job_name = toalphanum(job.name).lower()[:60]
-        namespace = job._namespace or 'default'
-
-        container = {
-            'name': job_name,
-            'image': self._image_from_options(job),
-            'command': ['/bin/bash', job.script_filename],
-            'workingDir': job.workdir,
-        }
 
         if job.num_cpus_per_task:
             container['resources'] = {
@@ -315,60 +215,34 @@ class KubernetesJobScheduler(JobScheduler):
             'spec': job_spec,
         }
 
-    def _image_from_options(self, job):
-        for opt in (*job.sched_access, *job.options, *job.cli_options):
-            if opt.startswith('--image='):
-                return opt.split('=', 1)[1]
+    def make_job(self, *args, **kwargs):
+        return _KubernetesJob(*args, **kwargs)
 
-        return 'ubuntu:latest'
+    def emit_preamble(self, job):
+        return []
 
-    def _namespace_from_options(self, job):
-        for opt in (*job.sched_access, *job.options, *job.cli_options):
-            if opt.startswith('--namespace='):
-                return opt.split('=', 1)[1]
+    def allnodes(self):
+        raise NotImplementedError('k8s scheduler does not support node listing')
 
-        return 'default'
+    def filternodes(self, job, nodes):
+        raise NotImplementedError('k8s scheduler does not support node filtering')
 
     def submit(self, job):
         if yaml is None:
-            raise JobSchedulerError('PyYAML is required for the k8s backend')
+            raise JobSchedulerError('PyYAML is required for the k8s scheduler')
 
         job._namespace = self._namespace_from_options(job)
-        registry = self._registry_from_options(job)
+        job._pod_name = job.name.lower()[:60]
 
-        # Registry mode: build jobs get baked into a container image
-        if registry and self._is_build_job(job):
-            self._build_and_push(job, registry)
-            job._jobid = f'build-{toalphanum(job.name).lower()}'
-            job._submit_time = time.time()
-            job._state = 'COMPLETED'
-            job._exitcode = 0
-            # Write empty output files so finished() returns True
-            open(os.path.join(job.workdir, job.stdout), 'a').close()
-            open(os.path.join(job.workdir, job.stderr), 'a').close()
-            self.log(f'build job completed via container build: {job._jobid}')
-            return
-
-        # Determine which image to use for run jobs
-        image = None
-        built_image_path = self._built_image_path(job)
-        if not self._is_build_job(job) and os.path.exists(built_image_path):
-            with open(built_image_path) as f:
-                image = f.read().strip()
-            self.log(f'using built image: {image}')
-
-        manifest = self._build_manifest(job, image=image)
-        job._pod_name = manifest['metadata']['name']
-
+        manifest = self._build_manifest(job)
         manifest_path = os.path.join(job.workdir, f'{job.name}_manifest.yaml')
+
         with open(manifest_path, 'w') as f:
             yaml.dump(manifest, f)
 
         job._manifest_path = manifest_path
 
-        osext.run_command(
-            f'kubectl apply -f {manifest_path}', check=True
-        )
+        osext.run_command(f'kubectl apply -f {manifest_path}', check=True)
 
         job._jobid = job._pod_name
         job._submit_time = time.time()
@@ -392,7 +266,6 @@ class KubernetesJobScheduler(JobScheduler):
     def finished(self, job):
         if job._state != 'COMPLETED':
             return False
-
         stdout = os.path.join(job.workdir, job.stdout)
         stderr = os.path.join(job.workdir, job.stderr)
         return os.path.exists(stdout) and os.path.exists(stderr)
@@ -404,8 +277,7 @@ class KubernetesJobScheduler(JobScheduler):
 
     def _poll_job(self, job):
         completed = osext.run_command(
-            f'kubectl get job {job._pod_name} '
-            f'-n {job._namespace} -o json'
+            f'kubectl get job {job._pod_name} -n {job._namespace} -o json'
         )
 
         if completed.returncode != 0:
@@ -423,13 +295,11 @@ class KubernetesJobScheduler(JobScheduler):
             ctype = cond.get('type')
             if cond.get('status') != 'True':
                 continue
-
             if ctype == 'Complete':
                 job._state = 'COMPLETED'
                 job._exitcode = 0
                 self._retrieve_logs(job)
                 return
-
             if ctype == 'Failed':
                 job._state = 'COMPLETED'
                 job._exitcode = 1
@@ -441,9 +311,7 @@ class KubernetesJobScheduler(JobScheduler):
         if (job._state == 'QUEUED' and job.max_pending_time
                 and time.time() - job.submit_time >= job.max_pending_time):
             self.cancel(job)
-            job._exception = JobError(
-                'maximum pending time exceeded', job.jobid
-            )
+            job._exception = JobError('maximum pending time exceeded', job.jobid)
 
     def _retrieve_logs(self, job):
         completed = osext.run_command(
@@ -451,9 +319,9 @@ class KubernetesJobScheduler(JobScheduler):
             f'--selector=job-name={job._pod_name} '
             f'-o jsonpath=\'{{.items[0].metadata.name}}\''
         )
+
         pod_name = completed.stdout.strip("'").strip()
         if not pod_name or completed.returncode != 0:
-            # Write empty files so finished() can return True
             open(os.path.join(job.workdir, job.stdout), 'a').close()
             open(os.path.join(job.workdir, job.stderr), 'a').close()
             return
@@ -462,11 +330,149 @@ class KubernetesJobScheduler(JobScheduler):
             f'kubectl logs {pod_name} -n {job._namespace}'
         )
 
-        with open(os.path.join(job.workdir, job.stdout), 'w') as f:
+        with open(os.path.join(job.outputdir, job.stdout), 'w') as f:
             f.write(logs.stdout)
 
-        with open(os.path.join(job.workdir, job.stderr), 'w') as f:
+        with open(os.path.join(job.outputdir, job.stderr), 'w') as f:
             f.write(logs.stderr)
+
+class _CanfarJob(Job):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._session_name = None
+        self._cancelled = False
+
+    @property
+    def session_name(self):
+        return self._session_name
+
+    @property
+    def cancelled(self):
+        return self._cancelled
+
+@register_scheduler('canfar')
+class CanfarJobScheduler(JobScheduler):
+    '''Canfar job scheduler for ReFrame.
+
+    Submits tests as Canfar job using Canfar python API. Intended for use
+    with tests that inherit from ContainerTest.
+
+    Any scheduler that submits container jobs should set:
+        container_scheduler = True
+
+    This convention allows ContainerTest (and its subclasses) to detect
+    container-aware schedulers without hardcoding scheduler names.
+
+    Usage in site_configuration partitions:
+        {
+            'name': '<partition name>',
+            'scheduler': 'k8s',
+            'launcher': 'local',
+            'access': [
+                '--image=<image>:latest',
+                '--namespace=benchmarks',
+            ],
+        }
+    '''
+    try:
+        from canfar.sessions import Session
+        connection_session = Session()
+    except ImportError:
+        connection_session = None
+    container_scheduler = True
+
+    def make_job(self, *args, **kwargs):
+        return _CanfarJob(*args, **kwargs)
+
+    def emit_preamble(self, job):
+        return []
+
+    def allnodes(self):
+        raise NotImplementedError('canfar scheduler does not support node listing')
+
+    def filternodes(self, job, nodes):
+        raise NotImplementedError('canfar scheduler does not support node filtering')
+
+    def submit(self, job):
+        open(os.path.join(job.outputdir.replace('/output/', '/stage/'), job.stdout), 'w').close()
+        open(os.path.join(job.outputdir.replace('/output/', '/stage/'), job.stderr), 'w').close()
+        if self.connection_session is None:
+            raise JobSchedulerError('canfar package is required for the canfar scheduler')
+        job._session_name = job.name.lower()[:job.name.find(' ')]
+        try:
+            print('submitting job with cmd: \n{}'.format(job.container_cmd.replace(" ", "\t")))
+            job._jobid =  self.connection_session.create(
+                name="headless-test",
+                image=job.container_image,
+                kind="headless",
+                cmd="bash",
+                env=job.env_variables,
+                # in order to allow commands to remain as one argument for "bash -c <commands>" we replace the spaces with \t
+                args="-c " + 'echo\t' + job.container_cmd.replace(" ", "\t") + '&&' + job.container_cmd.replace(" ", "\t")
+            )[0]
+            print(f"Session ID = {job._jobid}")
+        except:
+            raise JobError
+        job._submit_time = time.time()
+        job._state = self.connection_session.info(job._jobid)[0]["status"]
+        self.log(f'submitted canfar job: {job._jobid}')
+
+    def cancel(self, job):
+        #self.connection_session.destroy(job._jobid)
+        job._cancelled = True
+
+    def wait(self, job):
+        intervals = itertools.cycle([1, 2, 3])
+        while not self.finished(job):
+            self.poll(job)
+            time.sleep(next(intervals))
+
+    def finished(self, job):
+        if job._state != 'Completed' and job._state != 'Failed':
+            return False
+        return True
+    def poll(self, *jobs):
+        for job in jobs:
+            if job is not None and job._jobid is not None:
+                self._poll_job(job)
+
+    def _poll_job(self, job):
+        status = self.connection_session.info(job._jobid)[0]["status"]
+
+        job._state = status
+        if status == 'Completed':
+            job._exitcode = 0
+            self._retrieve_logs(job)
+            return
+        if status == 'Failed':
+            job._exitcode = 1
+            self._retrieve_logs(job)
+            return
+
+        job._state = status
+
+        if (job._state == 'Pending' and job.max_pending_time
+                and time.time() - job.submit_time >= job.max_pending_time):
+            self.cancel(job)
+            job._exception = JobError('maximum pending time exceeded', job.jobid)
+
+    def _retrieve_logs(self, job):
+        if job._state != "Completed" and job._state != "Failed":
+            open(os.path.join(job.outputdir, job.stdout), 'w').close()
+            open(os.path.join(job.outputdir, job.stderr), 'w').close()
+            return
+
+        logs = self.connection_session.logs(job._jobid)[job._jobid]
+
+        if job._state == "Completed":
+            with open(os.path.join(job.outputdir, job.stdout), 'w') as f:
+                f.write(logs)
+        else:
+            with open(os.path.join(job.outputdir, job.stderr), 'w') as f:
+                f.write(logs)
+
+
+stage_prefix = os.path.join(os.path.expanduser('~'), 'rfm_stage')
 
 site_configuration = {
     'systems': [
@@ -1128,19 +1134,33 @@ site_configuration = {
             'name': 'kind',
             'descr': 'Local Kubernetes (kind) cluster',
             'hostnames': ['.*'],
+#            'prefix': stage_prefix,
             'partitions': [
                 {
                     'name': 'default',
                     'scheduler': 'k8s',
                     'launcher': 'local',
                     'access': [
-                        '--image=uksrc-excalibur-base:latest',
+                        '--image=spsrc26.iaa.csic.es/srcnet-benchmarks/uksrc_excalibur_tests_base:latest',
                         '--pull-policy=Never',
                     ],
                     'environs': ['default'],
                 },
             ]
         }, # end local kind
+        {
+            'name': 'canfar',
+            'descr': 'canfar submission',
+            'hostnames': ['.*'],
+            'partitions': [
+                {
+                    'name': 'default',
+                    'scheduler': 'canfar',
+                    'launcher': 'local',
+                    'environs': ['default'],
+                },
+            ]
+        },
         # < insert new systems here >
     ],
     'environments': [

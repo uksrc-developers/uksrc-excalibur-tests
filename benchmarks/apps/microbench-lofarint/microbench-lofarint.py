@@ -14,6 +14,8 @@ class MicrobenchLOFARINT(ContainerTest):
     bench_name="MicrobenchLOFARINT"
     valid_systems = ['*']
     valid_prog_environs = ['default']
+    output_file = "Default.txt"
+    run_only_test = True
 
     code_dir = ""
     LINC_dir = ""
@@ -127,6 +129,9 @@ class MicrobenchLOFARINT(ContainerTest):
             '"${TOIL_COMMAND}" > '+self.output_dir+'setup.out && STATUS=${?} || STATUS=${?}',
             f"echo \"Workflow start: $(date '+%Y-%m-%d %H:%M:%S')\" > {self.outputdir}/output.log"
         ]
+        self.postrun_cmds = [
+            f"echo \"Workflow end: $(date '+%Y-%m-%d %H:%M:%S')\" >> {self.outputdir}/output.log"
+        ]
 
     @run_after('setup')
     def creat_json(self):
@@ -192,10 +197,6 @@ class MicrobenchLOFARINT(ContainerTest):
             f"{self.data_dir}/parameters.json"
         ]
 
-    @run_after('run')
-    def post_run_cmd(self):
-        subprocess.run(f"echo \"Workflow end: $(date '+%Y-%m-%d %H:%M:%S')\" >> {self.outputdir}/output.log", shell=True)
-
     @sanity_function
     def validate(self):
         with open(os.path.join(self.stagedir, "rfm_job.err")) as myfile:
@@ -239,16 +240,6 @@ class MicrobenchLOFARINT(ContainerTest):
         ]
         print(self.output_dict_list)
 
-    @performance_function('notAmetric')
-    def dont_send_confluence(self):
-        return 1
-
-    @run_after('performance')
-    def free_space(self):
-        og_dir = os.getcwd()
-        os.chdir(os.path.dirname(os.path.abspath(__file__)))
-        subprocess.run(f"rm -rf ./LOFARINT_Code", shell=True)
-        subprocess.run(f"rm -rf ./LOFARINT_Data", shell=True)
-        os.chdir(og_dir)
-        subprocess.run(f"rm -rf {os.path.join(self.outputdir, 'setup_results/')}", shell=True)
-        subprocess.run(f"rm -rf {os.path.join(self.outputdir, 'toil/')}", shell=True)
+#    @performance_function('notAmetric')
+#    def dont_send_confluence(self):
+#        return 1

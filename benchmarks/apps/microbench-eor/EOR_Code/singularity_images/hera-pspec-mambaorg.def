@@ -1,5 +1,5 @@
 bootstrap: docker
-from: mambaorg/micromamba
+from: mambaorg/micromamba:2.5
 
 %environment
     export SINGULARITY_SHELL=/bin/bash

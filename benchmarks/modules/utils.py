@@ -7,6 +7,7 @@ import sys
 import pprint
 
 import reframe as rfm
+from numpy.f2py.auxfuncs import throw_error
 from reframe.core.builtins import run_before, variable, run_after
 from reframe.core.exceptions import BuildSystemError, CommandLineError
 from reframe.core.logging import getlogger
@@ -231,6 +232,7 @@ def identify_build_environment(current_partition):
         subdir = partition
         env_dir = os.path.join(cp_dir, partition)
         if not os.path.isdir(cp_dir):
+            print(f"spack env create --without-view -d {env_dir}")
             cmd = run_command(["spack", "env", "create", "--without-view", "-d", env_dir])
             if cmd.returncode != 0:
                 raise BuildSystemError("Creation of the Spack "
@@ -262,26 +264,27 @@ class ContainerTest(rfm.RegressionTest, special=True):
     #: The container image to use when submitting to a container scheduler.
     container_image = variable(
         str,
-        value='spsrc26.iaa.csic.es/srcnet-benchmarks/uksrc_excalibur_tests_base:latest',
+        value='spsrc26.iaa.csic.es/srcnet-benchmarks/uksrc_excalibur_tests_base:0.1.1',
         loggable=True,
     )
 
+    # Run only tests need to set this variable to True
+    run_only_test = False
     #: The command to run inside the container. Defaults to running the
     #: current test via ReFrame inside the container.
-    container_cmd = variable(str, loggable=True)
-
+    container_cmd = variable(str, value="", loggable=True)
     env_variables = variable(dict, value={}, loggable=True)
 
     def __init__(self):
         self._is_container_job = False
-        import inspect
-        path = inspect.getfile(type(self))
-        self.container_cmd = f'reframe --system=default -c /opt/uksrc-excalibur-tests/{path[path.find("benchmarks/apps"):]} -n {self.name[:self.name.find(" ")]} -r && cat {self.output_file}'
-
 
     @run_after('setup')
     def _intercept_for_container_scheduler(self):
         if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            if self.container_cmd == "":
+                import inspect
+                path = inspect.getfile(type(self))
+                self.container_cmd = f'reframe --system=default -c /opt/uksrc-excalibur-tests/{path[path.find("benchmarks/apps"):]} -n {self.name[:self.name.find(" ")]} -r && cat {self.output_file}'
             self._is_container_job = True
             self.job.container_image = self.container_image
             self.job.container_cmd = self.container_cmd
@@ -296,34 +299,42 @@ class ContainerTest(rfm.RegressionTest, special=True):
 
 
     def compile(self):
-        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False) or self.run_only_test:
             return
         super().compile()
 
     def compile_wait(self):
-        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False) or self.run_only_test:
             return
         super().compile_wait()
 
     def compile_complete(self):
-        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False) or self.run_only_test:
             return True
         return super().compile_complete()
 
 
 class SpackTest(ContainerTest): #(rfm.RegressionTest):
     build_system = 'Spack'
+    pre_container_stage = None
     spack_spec = variable(str, value='', loggable=True)
     spack_spec_dict = variable(str, value='', loggable=True)
     profiler = variable(str, value='', loggable=True)
 
     @run_before('compile')
     def setup_spack_environment(self):
-        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
-            return
         env_dir, cp_dir, subdir = identify_build_environment(
             self.current_partition)
         dest = os.path.join(self.stagedir, 'spack_env')
+        cmd_spack_spec_dict = 'from spack import environment;\
+            spec_list = environment.active_environment().concrete_roots();\
+            key_list_for_each = [spec.variants.dict.keys() for spec in spec_list];\
+            result_dict = {spec.name: {"compiler": {"name": spec.compilers.name, "version": str(spec.compilers.versions).lstrip("=")}, "variants": {key: str(spec.variants.dict[key].value) if isinstance(spec.variants.dict[key].value, bool) else "" if spec.variants.dict[key].value is None else list(spec.variants.dict[key].value) if isinstance(spec.variants.dict[key].value, tuple) else spec.variants.dict[key].value for key in key_list_for_each[i]},"mpi":str(spec["mpi"]) if "mpi" in spec else ""  } for i, spec in enumerate(spec_list)};\
+            print(result_dict)'
+        if getattr(self.current_partition.scheduler, 'container_scheduler', False):
+            self.pre_container_stage = f'{self.stagedir}/rfm_job.out'
+            subprocess.run(f'echo "spack_spec_dict: $(spack -e {os.path.join(dest, subdir)} python -c \'{cmd_spack_spec_dict}\')" >> {self.stagedir}/rfm_job.out', shell=True)
+            return
         self.build_system.environment = os.path.join(dest, subdir)
         # Base name and full path of common settings file.
         spack_envs = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'spack'))
@@ -341,12 +352,8 @@ class SpackTest(ContainerTest): #(rfm.RegressionTest):
             f'(cd {cp_dir}; find . \\( -name "spack.yaml" -o -name "compilers.yaml" -o -name "packages.yaml" -o -name "upstreams.yaml" \\) -print0 | xargs -0 tar cf - | tar -C {dest} -xvf -)',
             f'spack -e {self.build_system.environment} config add "config:install_tree:root:{env_dir}/opt"',
         ]
-        cmd_spack_spec_dict =   'from spack import environment;\
-                                spec_list = environment.active_environment().concrete_roots();\
-                                key_list_for_each = [spec.variants.dict.keys() for spec in spec_list];\
-                                result_dict = {spec.name: {"compiler": {"name": spec.compilers.name, "version": str(spec.compilers.versions).lstrip("=")}, "variants": {key: str(spec.variants.dict[key].value) if isinstance(spec.variants.dict[key].value, bool) else "" if spec.variants.dict[key].value is None else list(spec.variants.dict[key].value) if isinstance(spec.variants.dict[key].value, tuple) else spec.variants.dict[key].value for key in key_list_for_each[i]},"mpi":str(spec["mpi"]) if "mpi" in spec else ""  } for i, spec in enumerate(spec_list)};\
-                                print(result_dict)'
-        self.postrun_cmds.append(f'echo "spack_spec_dict: $(spack -e {self.build_system.environment} python -c \'{cmd_spack_spec_dict}\')"')
+        self.postrun_cmds.append(f'echo "spack_spec_dict: $(spack -e {self.build_system.environment} python -c \'{cmd_spack_spec_dict}\')" >> {self.stagedir}/rfm_job.out')
+        self.postrun_cmds.append(f'cat {self.stagedir}/rfm_job.out')
 
         # Keep the `spack.lock` file in the output directory so that the Spack
         # environment can be faithfully reproduced later.

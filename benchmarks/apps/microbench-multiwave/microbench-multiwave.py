@@ -17,6 +17,7 @@ class MicrobenchMULTIWAVE(ContainerTest):
     bench_name="MicrobenchMULTIWAVE"
     valid_systems = ['*']
     valid_prog_environs = ['default']
+    run_only_test = True
 
     code_dir = ""
     data_dir = ""
@@ -71,6 +72,9 @@ class MicrobenchMULTIWAVE(ContainerTest):
             f"cp {self.data_dir}/low-mosaic-blanked.fits {self.outputdir}/low-mosaic-blanked.fits",
             f"cd {self.outputdir}",
             f"echo \"Workflow start: $(date '+%Y-%m-%d %H:%M:%S')\" > {self.outputdir}/output.log"
+        ]
+        self.postrun_cmds = [
+            f"echo \"Workflow end: $(date '+%Y-%m-%d %H:%M:%S')\" >> {self.outputdir}/output.log"
         ]
 
     @run_before('run')
@@ -127,16 +131,6 @@ class MicrobenchMULTIWAVE(ContainerTest):
         ]
         print(self.output_dict_list)
 
-    @performance_function('notAmetric')
-    def dont_send_confluence(self):
-        return 1
-
-    @run_after('performance')
-    def free_space(self):
-        og_dir = os.getcwd()
-        os.chdir(os.path.dirname(os.path.abspath(__file__)))
-        subprocess.run(f"rm -rf ./MULTIWAVE_Code", shell=True)
-        subprocess.run(f"rm -rf ./MULTIWAVE_Data", shell=True)
-        os.chdir(og_dir)
-        subprocess.run(f"rm -rf {os.path.join(self.outputdir, 'intermediate-products')}", shell=True)
-        subprocess.run(f"rm -f {self.outputdir}/*.fits", shell=True, check=True)
+#    @performance_function('notAmetric')
+#    def dont_send_confluence(self):
+#        return 1

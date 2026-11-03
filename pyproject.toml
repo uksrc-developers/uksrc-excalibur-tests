@@ -9,7 +9,8 @@ authors = [
     {name = "Mose Giordano", email = "m.giordano@ucl.ac.uk"},
     {name = "Tuomas Koskela", email = "t.koskela@ucl.ac.uk"},
     {name = "Ilektra Christidi", email = "ilektra.christidi@ucl.ac.uk"},
-    {name = "Tom Young", email = "t.young@ucl.ac.uk"}
+    {name = "Tom Young", email = "t.young@ucl.ac.uk"},
+    {name = "Owain Kenway", email = "o.kenway@ucl.ac.uk"}
 ]
 description = "Framework for building and running HPC benchmarks"
 readme = "README.md"
@@ -25,6 +26,11 @@ classifiers = [
 dependencies = [
     "reframe-hpc >= 4.6.1, < 5.0.0",
     "matplotlib >= 3.0.0",
+    "pandas >= 2.0.1",
+    "atlassian-python-api>=4.0.7",
+    "keystoneauth1>=5.14.0",
+    "python-swiftclient>=4.10.0",
+    "toil[cwl,wdl]>=9.4.1",
 ]
 
 [project.optional-dependencies]
@@ -33,7 +39,6 @@ test = [
   "excalibur-tests[post-processing]",
 ]
 post-processing = [
-    "pandas >= 2.0.1",
     "bokeh >= 3.7.0",
     "titlecase >= 2.4.1",
     "streamlit >= 1.44.0",
