@@ -722,10 +722,11 @@ site_configuration = {
                     'name': 'default',
                     'scheduler': 'k8s',
                     'launcher': 'local',
-#                    'access': [
+                    'access': [
+                        '--namespace=excalibur'
 #                        '--image=spsrc26.iaa.csic.es/srcnet-benchmarks/uksrc_excalibur_tests_base:latest',
 #                        '--pull-policy=Never',
-#                    ],
+                    ],
                     'environs': ['default'],
                     'features': ['low_memory']
                 },
