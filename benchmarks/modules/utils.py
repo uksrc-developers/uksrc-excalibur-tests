@@ -278,7 +278,7 @@ class TestInContainer(rfm.RegressionTest, special=True):
     # current test via ReFrame inside the container.
     container_precmd = variable(str, value="", loggable=True)
     container_cmd = variable(str, value="", loggable=True)
-    container_namespace = variable(str, value=None, loggable=True)
+    container_namespace = variable(str, value="default", loggable=True)
     container_system = variable(str, value="default", loggable=True)
     env_variables = variable(dict, value={}, loggable=True)
     use_persistent_storage = variable(bool, value=False, loggable=True)
