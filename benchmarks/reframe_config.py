@@ -723,9 +723,9 @@ site_configuration = {
                     'scheduler': 'k8s',
                     'launcher': 'local',
                     'access': [
-                        '--namespace=excalibur'
+                        '--namespace=excalibur',
 #                        '--image=spsrc26.iaa.csic.es/srcnet-benchmarks/uksrc_excalibur_tests_base:latest',
-#                        '--pull-policy=Never',
+                        '--pull-policy=IfNotPresent',
                     ],
                     'environs': ['default'],
                     'features': ['low_memory']

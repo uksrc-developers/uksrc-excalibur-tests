@@ -145,7 +145,9 @@ class KubernetesJobScheduler(JobScheduler):
         if yaml is None:
             raise JobSchedulerError('PyYAML is required for the k8s scheduler')
 
-        job._namespace = self._namespace_from_options(job)
+        if job._namespace is None:
+            job._namespace = self._namespace_from_options(job)
+
         base_name = job.name.lower()[:self._BASE_NAME_LEN].replace("_", "-")
         job._job_name = self._unique_pod_name(base_name, job._namespace)
 

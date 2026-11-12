@@ -272,12 +272,14 @@ class TestInContainer(rfm.RegressionTest, special=True):
         loggable=True,
     )
 
-    # Run only tests need to set this variable to True
+    # If this test should skip compile and setup, set run_only_test to True
     run_only_test = False
     # The command to run inside the container. Defaults to running the
     # current test via ReFrame inside the container.
     container_precmd = variable(str, value="", loggable=True)
     container_cmd = variable(str, value="", loggable=True)
+    container_namespace = variable(str, value=None, loggable=True)
+    container_system = variable(str, value="default", loggable=True)
     env_variables = variable(dict, value={}, loggable=True)
     use_persistent_storage = variable(bool, value=False, loggable=True)
 
@@ -292,17 +294,27 @@ class TestInContainer(rfm.RegressionTest, special=True):
     @run_before('run')
     def _intercept_for_container_scheduler(self):
         if getattr(self.current_partition.scheduler, 'container_scheduler', False):
-            if self.container_cmd == "":
-                import inspect
-                path = inspect.getfile(type(self))
-                self.container_cmd = f'reframe --system=default -S in_container=True -c /opt/uksrc-excalibur-tests/{path[path.find("benchmarks/apps"):]} -n {type(self).__name__} -r'
             self._is_container_job = True
             self.job.container_image = self.container_image
-            self.job.container_cmd = self.container_cmd
             self.job.container_precmd = self.container_precmd
+            self.job._namespace = self.container_namespace
             self.job.env_variables = self.env_variables
             self.job.use_persistent_storage = self.use_persistent_storage
             self.job.outputdir = self.outputdir
+            if self.container_cmd == "":
+                import inspect
+                path = inspect.getfile(type(self))
+                self.container_cmd = (
+                    f'reframe '
+                    f'--system={self.container_system} '
+                    f'-S in_container=True '
+                    f'-S container_namespace={self.container_namespace} '
+                    f'-c /opt/uksrc-excalibur-tests/{path[path.find("benchmarks/apps"):]} '
+                    f'-n {type(self).__name__} '
+                    f'-r'
+                )
+            self.job.container_cmd = self.container_cmd
+
 
     @run_before('compile')
     def add_profiler(self):
