@@ -282,6 +282,7 @@ class TestInContainer(rfm.RegressionTest, special=True):
     container_system = variable(str, value="default", loggable=True)
     env_variables = variable(dict, value={}, loggable=True)
     use_persistent_storage = variable(bool, value=False, loggable=True)
+    measurements = variable(list, value=[], loggable=True)
 
     run_time = variable(float, value=-1.0)
 
@@ -441,9 +442,9 @@ class TestInContainer(rfm.RegressionTest, special=True):
         return super().compile_complete()
 
     @run_before("performance")
-    def output_list_dict(self):
+    def collect_measurements(self):
         """
-        In order to use the database handler perflog 'swiftdb', self.output_dict_list must be defined.
+        In order to use the database handler perflog 'swiftdb', self.measurements must be defined.
         This dictionary should include at least:
         - TimeOfTest [str]
         - SystemPartition [str]
@@ -478,14 +479,12 @@ class TestInContainer(rfm.RegressionTest, special=True):
 
         time_of_test = str(dt.now().strftime("%Y-%m-%d %H:%M:%S"))
 
-        self.output_dict_list += [
+        self.measurements += [
             {
-                "TimeOfTest": time_of_test,
-                "SystemPartition": f"{os.environ.get('GH_RUNNER')} - {self.current_system.name} - {self.current_partition.name}",
-                "ExecutionTime": self.run_time
+                "check_perf_test_execution_time_s": self.run_time
             }
         ]
-        print(self.output_dict_list)
+        print(self.measurements)
 
     @sanity_function
     def validate(self):
